@@ -2,8 +2,21 @@
 name = "ml_and_backtester_app"
 version = "0.1.0"
 description = "Add your description here"
-requires-python = ">=3.13"
-dependencies = []
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "boto3>=1.42.69",
+    "dotenv>=0.9.9",
+    "ib-async>=2.1.0",
+    "ib-insync>=0.9.86",
+    "matplotlib>=3.10.8",
+    "pandas>=2.1,<2.2",
+    "numpy>=1.26,<2.0",
+    "pyarrow>=23.0.1",
+    "wrds>=3.1.6",
+    "sqlalchemy>=1.4,<2.0",
+    "fastparquet>=2025.12.0",
+    "python-dotenv>=1.0",
+]
 
 [tool.setuptools]
 package-dir = {"" = "src"}
