@@ -43,38 +43,3 @@ def main(
 if __name__ == "__main__":
     from config.config_update_data import CONFIG
     main(**CONFIG)
-
-from ml_and_backtester_app.utils.s3_utils import s3Utils
-import boto3
-from dotenv import load_dotenv
-import os
-load_dotenv()
-s3u = s3Utils()
-res = s3u.pull_parquet_files_from_s3(
-    paths=[
-        "ml-and-backtester-app/data/wrds_gross_query.parquet",
-        "ml-and-backtester-app/data/wrds_universe.parquet",
-        "ml-and-backtester-app/data/ib_historical_prices.parquet"
-    ]
-)
-notna = res["ib_historical_prices"].notna().sum(axis=1)
-# notna_prevdate = notna.iloc[-2]
-# notna_current = notna.iloc[-1]
-# notna_current/notna_prevdate
-#
-# new_ib_prices = res["ib_historical_prices"].loc[res["ib_historical_prices"].index<"2026-01-06",:]
-# updated_ib_objects = {
-#     "data/ib_historical_prices.parquet": new_ib_prices
-# }
-# s3Utils.replace_existing_files_in_s3(s3=boto3.client("s3"),
-#                                      bucket_name=os.getenv("BUCKET_NAME"),
-#                                      files_dct=updated_ib_objects
-#                                      )
-#
-# paths = [
-#     "data/wrds_gross_query.parquet",
-#     "data/wrds_universe.parquet",
-#     "data/tickers_across_dates.pkl",
-#     "data/dates.pkl",
-#     "data/crsp_to_ib_mapping_tickers.pkl"
-# ]
