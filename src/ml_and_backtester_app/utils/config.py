@@ -3,16 +3,18 @@ from pathlib import Path
 import logging
 import json
 from typing import List, Dict, Type, Tuple
+from ml_and_backtester_app.machine_learning.models import (
+    Model, Lasso, WLSExponentialDecay, OLS, RidgeModel, ElasticNetModel, RandomForestModel,
+    GradientBoostingModel, SVRModel, NeuralNetModel, LightGBMModel, XGBoostModel
+)
 
 logger = logging.getLogger(__name__)
-
 
 @dataclass
 class Config:
     """
     Configuration object to hold settings for the application.
     """
-
     def __init__(self):
         # Paths
         try:
@@ -24,20 +26,157 @@ class Config:
         self.RUN_PIPELINE_CONFIG_PATH = self.ROOT_DIR / "configs" / "run_pipeline_config.json"
         logger.info("run_pipeline config path: " + str(self.RUN_PIPELINE_CONFIG_PATH))
 
-        # blabla
+        # AWS profile
+        self.aws_bucket_name: str|None = None
+        self.aws_default_region: str|None = None
+        self.aws_output_format: str|None = None
 
-        # Load JSON config to attributes of Config class
+        # IB config
+        self.ib_host: str|None = None
+        self.ib_port: int|None = None
+        self.ib_client_id: int|None = None
+
+        # Data path configurations
+        self.fred_path: str|None|Path = None
+        self.codes_path: str|None|Path = None
+        self.prices_path: str|None|Path = None
+        self.outputs_path: str|None|Path = None
+        self.s3_path: str|None|Path = None
+
+        # Files ext
+        self.macro_ext: str|None = None
+        self.prices_ext: str|None = None
+
+        # FMP
+        self.decay: int|float|None = None
+        self.macro_var_name: str|None = None
+        self.fmp_min_nb_periods_required: int|None = None
+        self.percentiles_winsorization: Tuple[int, int]|None = None
+        self.percentiles_portfolios: Tuple[int, int]|None = None
+        self.rebal_periods: int|None = None
+        self.portfolio_type_positive: str|None = None
+        self.portfolio_type_negative: str|None = None
+        self.transaction_costs: float|int|None = None
+        self.fmp_bench_transaction_costs: float|int|None = None
+        self.strategy_name: str|None = None
+
+        # Feature engineering
+        self.start_date: str|None = None
+        self.end_date: str|None = None
+        self.lags: List[int]|list|None = None
+
+        # Forecasting
+        self.load_or_train_models: str | None = None  # "load" or "train"
+        self.forecast_horizon: int|None = None
+        self.validation_window: int|None = None
+        self.min_nb_periods_required: int|None = None
+        self.models: Dict[str, Type[Model]]|None = None
+        self.hyperparams_grid: Dict[str, dict]|None = None
+        self.with_pca: bool|None = None
+        self.nb_pca_components: int|None = None
+
+        # Dynamic Allocation
+        self.dynamic_allocation_rebal_periods: int|None = None
+        self.dynamic_allocation_tc: float|int|None = None
+
+        # Load json config to attributes of Config class
         self._load_run_pipeline_config()
 
-    def _load_run_pipeline_config(self) -> None:
+    def _load_run_pipeline_config(self)->None:
         """
         Load run_pipeline_config.json file
         :return:
         """
-        with open(self.ROOT_DIR / "configs" / "run_pipeline_config.json", "r") as f:
+        with open(self.ROOT_DIR / "config" / "run_pipeline_config.json" , "r") as f:
             config: dict = json.load(f)
 
             # AWS
-            if config.get("AWS").get("PROFILE") is not None:
-                self.aws_profile = config.get("AWS").get("PROFILE")
+            if config.get("AWS").get("BUCKET_NAME") is not None:
+                self.aws_bucket_name = config.get("AWS").get("BUCKET_NAME")
+            if config.get("AWS").get("DEFAULT_REGION") is not None:
+                self.aws_default_region = config.get("AWS").get("DEFAULT_REGION")
+            if config.get("AWS").get("OUTPUT_FORMAT") is not None:
+                self.aws_output_format = config.get("AWS").get("OUTPUT_FORMAT")
 
+            # IB config
+            if config.get("IB").get("IB_HOST") is not None:
+                self.ib_host = config.get("IB").get("IB_HOST")
+            if config.get("IB").get("IB_PORT") is not None:
+                self.ib_port = config.get("IB").get("IB_PORT")
+            if config.get("IB").get("IB_CLIENT_ID") is not None:
+                self.ib_client_id = config.get("IB").get("IB_CLIENT_ID")
+
+            # Paths
+            if config.get("PATHS").get("S3_FRED_PATH") is not None:
+                self.fred_path = config.get("PATHS").get("S3_FRED_PATH")
+
+            if config.get("PATHS").get("S3_CODES_PATH") is not None:
+                self.codes_path = config.get("PATHS").get("S3_CODES_PATH")
+
+            if config.get("PATHS").get("S3_PRICES_PATH") is not None:
+                self.prices_path = config.get("PATHS").get("S3_PRICES_PATH")
+
+            if config.get("PATHS").get("S3_OUTPUTS_PATH") is not None:
+                self.outputs_path = config.get("PATHS").get("S3_OUTPUTS_PATH")
+
+            if config.get("PATHS").get("S3_PATH") is not None:
+                self.s3_path = config.get("PATHS").get("S3_PATH")
+
+            # Files ext
+            self.macro_ext = config.get("FILES_EXT").get("MACRO")
+            self.prices_ext = config.get("FILES_EXT").get("PRICES")
+
+            # FMP
+            self.decay = config.get("FMP").get("DECAY")
+            self.macro_var_name = config.get("FMP").get("MACRO_VAR_NAME")
+            self.fmp_min_nb_periods_required = config.get("FMP").get("MIN_NB_PERIODS_REQUIRED")
+            self.percentiles_winsorization = tuple(config.get("FMP").get("PERCENTILES_WINSORIZATION"))
+            self.percentiles_portfolios = tuple(config.get("FMP").get("PERCENTILES_PORTFOLIOS"))
+            self.rebal_periods = config.get("FMP").get("REBAL_PERIODS")
+            self.portfolio_type_positive = config.get("FMP").get("PORTFOLIO_TYPE_POSITIVE")
+            self.portfolio_type_negative = config.get("FMP").get("PORTFOLIO_TYPE_NEGATIVE")
+            self.transaction_costs = config.get("FMP").get("TRANSACTION_COSTS_BPS")
+            self.fmp_bench_transaction_costs = config.get("FMP").get("BENCHMARK_TRANSACTION_COSTS_BPS")
+            self.strategy_name = config.get("FMP").get("STRATEGY_NAME")
+
+            # Feature engineering
+            self.start_date = config.get("FEATURE_ENGINEERING").get("START_DATE")
+            self.end_date = config.get("FEATURE_ENGINEERING").get("END_DATE")
+            self.lags = config.get("FEATURE_ENGINEERING").get("LAGS")
+
+            # Forcasting
+            self.load_or_train_models = config.get("FORECASTING").get("LOAD_OR_TRAIN_MODELS")
+            self.forecast_horizon = config.get("FORECASTING").get("FORECAST_HORIZON")
+            self.validation_window = config.get("FORECASTING").get("VALIDATION_WINDOW")
+            self.min_nb_periods_required = config.get("FORECASTING").get("MIN_NB_PERIODS_REQUIRED")
+            models = {
+                "wls": WLSExponentialDecay,
+                "lasso": Lasso,
+                "ols": OLS,
+                "ridge": RidgeModel,
+                "elastic_net": ElasticNetModel,
+                "random_forest": RandomForestModel,
+                "gradient_boosting": GradientBoostingModel,
+                "svr": SVRModel,
+                "neural_net": NeuralNetModel,
+                "lightgbm": LightGBMModel,
+                "xgboost": XGBoostModel,
+            }
+            for model in config.get("FORECASTING").get("MODELS"):
+                if model not in models.keys():
+                    raise ValueError(f"Model {model} not implemented.")
+            self.models = {model: models[model] for model in config.get("FORECASTING").get("MODELS")}
+            self.with_pca = config.get("FORECASTING").get("WITH_PCA")
+            self.nb_pca_components = config.get("FORECASTING").get("NB_PCA_COMPONENTS")
+            if self.with_pca:
+                self.models.update({model+"_pca": models[model] for model in config.get("FORECASTING").get("MODELS")})
+            self.hyperparams_grid = config.get("FORECASTING").get("HYPERPARAMS_GRID")
+            if self.with_pca:
+                for model_name, model in self.models.items():
+                    if model_name.endswith("_pca"):
+                        base_model_name = model_name[:-4]
+                        self.hyperparams_grid[model_name] = self.hyperparams_grid.get(base_model_name)
+
+            # Dynamic Allocation
+            self.dynamic_allocation_rebal_periods = config.get("DYNAMIC_ALLOCATION").get("REBAL_PERIODS")
+            self.dynamic_allocation_tc = config.get("DYNAMIC_ALLOCATION").get("TRANSACTION_COSTS_BPS")

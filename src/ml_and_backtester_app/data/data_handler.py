@@ -8,7 +8,7 @@ from pandas.tseries.offsets import BDay
 from typing import List, Union, Dict
 import logging
 import wrds
-from ib_insync import *
+from ib_insync import IB, Stock, util
 import boto3
 from botocore.client import BaseClient
 from pathlib import Path
@@ -329,9 +329,9 @@ class DataHandler:
                     time.sleep(self.pause)
                     return result
 
-                except Exception as e:
+                except Exception as exc:
                     logger.error(
-                        f"Error querying IB for {query}: {e} "
+                        f"Error querying IB for {query}: {exc} "
                         f"(attempt {attempt + 1}/{self.retries})"
                     )
                     time.sleep(1.5)
@@ -498,7 +498,7 @@ class DataHandler:
                 try:
                     with open(self.data_path / "crsp_to_ib_mapping_tickers.pkl", "rb") as f:
                         self.crsp_to_ib_mapping_tickers = pickle.load(f)
-                except Exception as e:
+                except FileNotFoundError as _:
                     try:
                         self.build_crsp_to_ib_ticker_mapping()
                     except Exception as e:
@@ -733,8 +733,8 @@ class DataHandler:
                         useRTH=use_rth,
                         formatDate=format_date
                     )
-                except Exception as e:
-                    msg = str(e).lower()
+                except Exception as exc:
+                    msg = str(exc).lower()
                     if "pacing" in msg or "rate" in msg or "violation" in msg:
                         print("! Pacing violation -> waiting 30 seconds before retrying...")
                         logger.warning(f"Pacing violation for {contract_ib.symbol}, retrying...")

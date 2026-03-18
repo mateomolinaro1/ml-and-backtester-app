@@ -1,8 +1,7 @@
 import pandas as pd
 import logging
-from typing import List, Dict
+from typing import List
 import pickle
-import boto3
 from botocore.client import BaseClient
 import io
 import os

@@ -43,3 +43,4 @@ def main(
 if __name__ == "__main__":
     from config.config_update_data import CONFIG
     main(**CONFIG)
+
