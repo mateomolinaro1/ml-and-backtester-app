@@ -6,12 +6,9 @@ and managing financial datasets stored in S3.
 """
 
 from __future__ import annotations
-
 from typing import Dict
-
 import pandas as pd
 from better_aws import AWS
-
 from ml_and_backtester_app.utils.config import Config
 
 

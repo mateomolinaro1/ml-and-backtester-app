@@ -16,7 +16,7 @@
     "S3_CODES_PATH": "data/FRED-MD-codes.json",
     "S3_PRICES_PATH": "data/monthly_ret.parquet",
     "S3_OUTPUTS_PATH": "outputs",
-    "S3_PATH": "s3://dynamic-allocation-macro-fmp"
+    "S3_PATH": "s3://ml-and-backtester-app/"
   },
 
   "FILES_EXT": {

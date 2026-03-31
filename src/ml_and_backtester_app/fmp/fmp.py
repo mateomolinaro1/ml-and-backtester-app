@@ -128,39 +128,39 @@ class FactorMimickingPortfolio:
 
     def _load_regression_results_from_s3(self)->None:
         self.bayesian_betas = self.data.aws.s3.load(
-            key=self.config.s3_path + "/outputs/fmp/fmp_bayesian_betas.parquet"
+            key="outputs/fmp/fmp_bayesian_betas.parquet"
         )
 
         self.adjusted_rsquared = self.data.aws.s3.load(
-            key=self.config.s3_path + "/outputs/fmp/fmp_adjusted_rsquared.parquet"
+            key="outputs/fmp/fmp_adjusted_rsquared.parquet"
         )
 
         self.betas_macro = self.data.aws.s3.load(
-            key=self.config.s3_path + "/outputs/fmp/fmp_betas_macro.parquet"
+            key="outputs/fmp/fmp_betas_macro.parquet"
         )
 
         self.betas_mkt = self.data.aws.s3.load(
-            key=self.config.s3_path + "/outputs/fmp/fmp_betas_mkt.parquet"
+            key="outputs/fmp/fmp_betas_mkt.parquet"
         )
 
         self.default_pvalue = self.data.aws.s3.load(
-            key=self.config.s3_path + "/outputs/fmp/fmp_default_pvalue.parquet"
+            key="outputs/fmp/fmp_default_pvalue.parquet"
         )
 
         self.newey_west_pvalue = self.data.aws.s3.load(
-            key=self.config.s3_path + "/outputs/fmp/fmp_newey_west_pvalue.parquet"
+            key="outputs/fmp/fmp_newey_west_pvalue.parquet"
         )
 
         self.macro_var = self.data.aws.s3.load(
-            key=self.config.s3_path + "/outputs/fmp/fmp_macro_var.parquet"
+            key="outputs/fmp/fmp_macro_var.parquet"
         )
 
         self.newey_west_var_betas = self.data.aws.s3.load(
-            key=self.config.s3_path + "/outputs/fmp/fmp_newey_west_var_betas.parquet"
+            key="outputs/fmp/fmp_newey_west_var_betas.parquet"
         )
 
         self.white_var_betas = self.data.aws.s3.load(
-            key=self.config.s3_path + "/outputs/fmp/fmp_white_var_betas.parquet"
+            key="outputs/fmp/fmp_white_var_betas.parquet"
         )
 
     def _get_betas(self):
