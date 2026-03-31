@@ -19,6 +19,8 @@ class DataSource(ABC):
         
         if "date" in cols:
             df["date"] = pd.to_datetime(df[cols["date"]], errors="coerce")
+        elif "sasdate" in cols:
+            df["date"] = pd.to_datetime(df[cols["sasdate"]], errors="coerce", format="%Y%m%d")
         elif {"year", "month", "day"}.issubset(cols.keys()):
             df["date"] = pd.to_datetime(df[[cols["year"], cols["month"], cols["day"]]])
         elif {"year", "month"}.issubset(cols.keys()):
