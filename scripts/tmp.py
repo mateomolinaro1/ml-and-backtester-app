@@ -29,3 +29,4 @@ fmp = FactorMimickingPortfolio(
     rf=None
 )
 fmp.build_macro_portfolios()
+

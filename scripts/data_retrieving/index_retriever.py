@@ -2,7 +2,6 @@ import pandas as pd
 import requests
 import io
 
-
 class S3PolicyDataUpdater:
     def __init__(self, url):
         self.url = url
