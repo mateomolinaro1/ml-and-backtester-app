@@ -1,8 +1,17 @@
 import pandas as pd
 from abc import ABC, abstractmethod
 from src.ml_and_backtester_app.utils.s3_utils import s3Utils
-
+from better_aws import AWS
 # --- CONFIGURATION ET LOGIQUE DE BASE ---
+
+#Ici j'ai repris la configuration de l'exemple
+aws = AWS(region="eu-north-1", verbose=True)
+aws.s3.config(
+    bucket="ml-and-backtester-app",
+    output_type="pandas",      # tabular loads -> pandas (or "polars")
+    file_type="parquet",       # default tabular format for dataframe uploads without extension
+    overwrite=True,
+)
 
 class DataSource(ABC):
     """Classe abstraite définissant comment récupérer une donnée spécifique."""
@@ -79,20 +88,14 @@ class S3PolicyDataUpdater:
         self.strategy = self.STRATEGIES[data_type]
         self.s3_path = s3_path
         self.df = None
-
-    def fetch_remote_data(self):
-        try:
-            return self.strategy.fetch()
-        except Exception as e:
-            print(f"Erreur lors de la récupération distante : {e}")
-            return None
+        self.aws = aws
 
     def load_from_s3(self):
         try:
-            df_existing = s3Utils.pull_parquet_file_from_s3(self.s3_path)
+            df_existing = self.aws.s3.load(self.s3_path)
             return self.strategy.prepare_dates(df_existing)
         except Exception as e:
-            print(f"S3 vide ou erreur : {e}")
+            print(f"S3 empty or error: {e}")
             return None
 
     def sync_and_update(self):
@@ -116,6 +119,6 @@ class S3PolicyDataUpdater:
 
     def save_to_s3(self):
         if self.df is not None:
-            s3Utils.push_object_to_s3_parquet(self.df, self.s3_path)
+            self.aws.s3.upload(self.df, self.s3_path)
         else:
-            raise ValueError("Aucune donnée à sauvegarder.")
+            raise ValueError("No data to save.")
