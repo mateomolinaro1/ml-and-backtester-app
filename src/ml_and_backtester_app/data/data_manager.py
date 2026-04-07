@@ -61,6 +61,7 @@ class DataManager:
             output_type="pandas",  # tabular loads -> pandas (or "polars")
             file_type="parquet",  # default tabular format for dataframe uploads without extension
             overwrite=True,
+            allow_unsafe_serialization=True,  # Allow loading of potentially unsafe data (e.g., pkl)
         )
 
     def _fetch_from_s3(self) -> dict[str, pd.DataFrame]:

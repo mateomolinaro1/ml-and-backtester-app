@@ -9,12 +9,12 @@ from .base import EstimationScheme
 import logging
 from ml_and_backtester_app.machine_learning.models import Model
 from ml_and_backtester_app.machine_learning.features_selection import PCAFactorExtractor
-from ml_and_backtester_app.utils.s3_utils import s3Utils
 
 logger = logging.getLogger(__name__)
 
 
 class ExpandingWindowScheme(EstimationScheme):
+    # pass because already inherited
 
     def run(
         self,
@@ -241,19 +241,26 @@ class ExpandingWindowScheme(EstimationScheme):
         return train_data, val_data, val_end
 
     def _load_models(self):
-        loaded_obj = s3Utils.pull_files_from_s3(
-            paths=[
-                self.config.outputs_path + "/forecasting" + "/best_hyperparams_all_models_overtime.pkl",
-                self.config.outputs_path + "/forecasting" + "/best_params_all_models_overtime.pkl",
-                self.config.outputs_path + "/forecasting" + "/best_score_all_models_overtime.parquet",
-                self.config.outputs_path + "/forecasting" + "/oos_predictions.pkl",
-                self.config.outputs_path + "/forecasting" + "/oos_true.pkl",
-                self.config.outputs_path + "/forecasting" + "/data.parquet",
-                self.config.outputs_path + "/forecasting" + "/x.parquet",
-                self.config.outputs_path + "/forecasting" + "/y.parquet",
-            ]
+        paths = [
+            self.config.outputs_path + "/forecasting" + "/best_hyperparams_all_models_overtime.pkl",
+            self.config.outputs_path + "/forecasting" + "/best_params_all_models_overtime.pkl",
+            self.config.outputs_path + "/forecasting" + "/best_score_all_models_overtime.parquet",
+            self.config.outputs_path + "/forecasting" + "/oos_predictions.pkl",
+            self.config.outputs_path + "/forecasting" + "/oos_true.pkl",
+            self.config.outputs_path + "/forecasting" + "/data.parquet",
+            self.config.outputs_path + "/forecasting" + "/x.parquet",
+            self.config.outputs_path + "/forecasting" + "/y.parquet",
+        ]
+        loaded_obj_list = self.dm.aws.s3.load(
+            key=paths
         )
-        return loaded_obj
+        # Transforming list to dict with the filename as key
+        dct = {}
+        for path, obj in zip(paths, loaded_obj_list):
+            filename = path.split("/")[-1].split(".")[0]
+            dct[filename] = obj
+
+        return dct
 
     def _put_in_attributes(self, loaded_obj: dict):
         self.best_hyperparams_all_models_overtime = loaded_obj[

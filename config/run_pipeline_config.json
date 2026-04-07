@@ -19,11 +19,6 @@
     "S3_PATH": "s3://ml-and-backtester-app/"
   },
 
-  "FILES_EXT": {
-    "MACRO": "csv",
-    "PRICES": "parquet"
-  },
-
   "FMP": {
     "DECAY": 60,
     "MACRO_VAR_NAME": "CPIAUCSL",

@@ -122,10 +122,6 @@ class Config:
             if config.get("PATHS").get("S3_PATH") is not None:
                 self.s3_path = config.get("PATHS").get("S3_PATH")
 
-            # Files ext
-            self.macro_ext = config.get("FILES_EXT").get("MACRO")
-            self.prices_ext = config.get("FILES_EXT").get("PRICES")
-
             # FMP
             self.decay = config.get("FMP").get("DECAY")
             self.macro_var_name = config.get("FMP").get("MACRO_VAR_NAME")

@@ -5,6 +5,7 @@ from typing import Dict, Type, Iterable, List
 from itertools import product
 from ml_and_backtester_app.machine_learning.models import Model
 from ml_and_backtester_app.utils.config import Config
+from ml_and_backtester_app.data.data_manager import DataManager
 
 
 class EstimationScheme(ABC):
@@ -16,6 +17,7 @@ class EstimationScheme(ABC):
     def __init__(
         self,
         config: Config,
+        dm: DataManager,
         x: pd.DataFrame,
         y: pd.DataFrame,
         forecast_horizon: int,
@@ -23,6 +25,7 @@ class EstimationScheme(ABC):
         min_nb_periods_required: int,
     ):
         self.config = config
+        self.dm = dm
         self.x = x
         self.y = y
         if not x.index.equals(y.index):

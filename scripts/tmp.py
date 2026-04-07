@@ -44,6 +44,7 @@ fe.get_features()
 # Expanding Window Scheme
 exp_window = ExpandingWindowScheme(
     config=config,
+    dm=data_manager,
     x=fe.x,
     y=fe.y,
     forecast_horizon=config.forecast_horizon,
