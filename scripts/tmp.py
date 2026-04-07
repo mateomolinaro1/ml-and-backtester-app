@@ -33,6 +33,7 @@ fmp.build_macro_portfolios()
 # Analytics FMP
 analytics_fmp = AnalyticsFMP(
     config=config,
+    dm=data_manager,
     fmp=fmp
 )
 analytics_fmp.get_analytics()
@@ -57,6 +58,7 @@ exp_window.run(
 # Analytics Forecasting
 analytics_forecasting = AnalyticsForecasting(
     config=config,
+    dm=data_manager,
     exp_window=exp_window
 )
 analytics_forecasting.get_analytics()
@@ -74,6 +76,7 @@ dynamic_alloc.run_backtest()
 # Analytics Dynamic Allocation
 analytics_dynamic_alloc = AnalyticsDynamicAllocation(
     config=config,
+    dm=data_manager,
     dynamic_alloc=dynamic_alloc,
     fmp=fmp
 )

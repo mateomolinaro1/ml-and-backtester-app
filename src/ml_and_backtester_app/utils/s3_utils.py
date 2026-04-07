@@ -9,6 +9,8 @@ import pyarrow.fs as pafs
 import boto3
 from typing import cast, IO
 from io import BytesIO
+import matplotlib.pyplot as plt
+from ml_and_backtester_app.data.data_manager import DataManager
 
 logger = logging.getLogger(__name__)
 
@@ -205,3 +207,23 @@ class s3Utils:
         s3_client.upload_fileobj(buffer, bucket, path)
 
         return
+
+
+    @staticmethod
+    def save_plot_to_s3(dm: DataManager, path_name: str, fig: plt.Figure) -> None:
+        """
+        Save a matplotlib figure to S3.
+
+        Parameters
+        ----------
+        dm : DataManager instance with AWS client
+        path_name : str
+            S3 key (not full path)
+        fig : plt.Figure
+            Matplotlib figure to save
+        """
+        buffer = BytesIO()
+        fig.savefig(buffer, format="png", bbox_inches="tight")
+        buffer.seek(0)
+
+        dm.aws.s3.upload(src=buffer.getvalue(), key=path_name)
