@@ -9,6 +9,7 @@ from ml_and_backtester_app.analytics.analytics import AnalyticsFMP, AnalyticsFor
     AnalyticsDynamicAllocation
 import sys
 import logging
+import psutil, os
 load_dotenv()
 
 logging.basicConfig(
@@ -19,9 +20,15 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 config = Config()
 
+def log_memory(label):
+    mem = psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024
+    logger.info(f"[MEMORY] {label}: {mem:.0f} MB")
+
 # Data
 logger.info("Loading data...")
+log_memory("before DataManager")
 data_manager = DataManager(config=config)
+log_memory("after DataManager")
 
 # FMP
 logger.info("Building Factor Mimicking Portfolios...")
@@ -32,6 +39,7 @@ fmp = FactorMimickingPortfolio(
     rf=None
 )
 fmp.build_macro_portfolios()
+log_memory("after FMP")
 
 # Analytics FMP
 logger.info("Getting analytics on FMP...")
