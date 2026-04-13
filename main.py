@@ -16,12 +16,15 @@ logging.basicConfig(
         stream=sys.stdout,
         format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
     )
+logger = logging.getLogger(__name__)
 config = Config()
 
 # Data
+logger.info("Loading data...")
 data_manager = DataManager(config=config)
 
 # FMP
+logger.info("Building Factor Mimicking Portfolios...")
 fmp = FactorMimickingPortfolio(
     config=config,
     data=data_manager,
@@ -31,6 +34,7 @@ fmp = FactorMimickingPortfolio(
 fmp.build_macro_portfolios()
 
 # Analytics FMP
+logger.info("Getting analytics on FMP...")
 analytics_fmp = AnalyticsFMP(
     config=config,
     dm=data_manager,
@@ -39,9 +43,12 @@ analytics_fmp = AnalyticsFMP(
 analytics_fmp.get_analytics()
 
 # Feature Engineering
+logger.info("Getting features...")
 fe = FeaturesEngineering(config=config, data=data_manager)
 fe.get_features()
+
 # Expanding Window Scheme
+logger.info("Running Expanding Window Scheme...")
 exp_window = ExpandingWindowScheme(
     config=config,
     dm=data_manager,
@@ -57,6 +64,7 @@ exp_window.run(
 )
 
 # Analytics Forecasting
+logger.info("Getting analytics on forecasting...")
 analytics_forecasting = AnalyticsForecasting(
     config=config,
     dm=data_manager,
@@ -65,6 +73,7 @@ analytics_forecasting = AnalyticsForecasting(
 analytics_forecasting.get_analytics()
 
 # Dynamic Allocation
+logger.info("Running Dynamic Allocation backtest...")
 dynamic_alloc = DynamicAllocation(
     config=config,
     predictions=exp_window.oos_predictions,
@@ -75,6 +84,7 @@ dynamic_alloc = DynamicAllocation(
 dynamic_alloc.run_backtest()
 
 # Analytics Dynamic Allocation
+logger.info("Getting analytics on Dynamic Allocation backtest...")
 analytics_dynamic_alloc = AnalyticsDynamicAllocation(
     config=config,
     dm=data_manager,
