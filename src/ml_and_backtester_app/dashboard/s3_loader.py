@@ -11,12 +11,16 @@ import os
 
 import boto3
 import pandas as pd
+from botocore.config import Config as BotocoreConfig
 from botocore.exceptions import ClientError
 
 logger = logging.getLogger(__name__)
 
 BUCKET = os.getenv("AWS_BUCKET_NAME", "ml-and-backtester-app")
 REGION = os.getenv("AWS_DEFAULT_REGION", "eu-north-1")
+
+# Fail fast: don't let boto3 hang the Dash callback for 60 s on network issues
+_BOTO_CFG = BotocoreConfig(connect_timeout=5, read_timeout=15, retries={"max_attempts": 1})
 
 
 def _s3():
@@ -25,28 +29,29 @@ def _s3():
         region_name=REGION,
         aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
         aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+        config=_BOTO_CFG,
     )
 
 
 def presigned_url(key: str, expires: int = 3600) -> str | None:
-    """Return a presigned GET URL for *key*, or None if the object is missing."""
+    """Return a presigned GET URL for *key*, or None on any failure."""
     try:
         return _s3().generate_presigned_url(
             "get_object",
             Params={"Bucket": BUCKET, "Key": key},
             ExpiresIn=expires,
         )
-    except ClientError as exc:
+    except Exception as exc:
         logger.warning("Could not generate presigned URL for %s: %s", key, exc)
         return None
 
 
 def load_parquet(key: str) -> pd.DataFrame | None:
-    """Download *key* from S3 and return it as a DataFrame, or None on failure."""
+    """Download *key* from S3 and return it as a DataFrame, or None on any failure."""
     try:
         response = _s3().get_object(Bucket=BUCKET, Key=key)
         return pd.read_parquet(io.BytesIO(response["Body"].read()))
-    except ClientError as exc:
+    except Exception as exc:
         logger.warning("Could not load parquet %s: %s", key, exc)
         return None
 

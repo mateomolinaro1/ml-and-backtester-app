@@ -11,9 +11,11 @@ import subprocess
 import sys
 import threading
 from pathlib import Path
+from ml_and_backtester_app.utils.config import Config
+config = Config()
 
 # src/ml_and_backtester_app/dashboard/ → 3 parents → src/ → 1 more → project root
-ROOT_DIR = Path(__file__).resolve().parent.parent.parent.parent
+ROOT_DIR = config.ROOT_DIR
 CONFIG_PATH = ROOT_DIR / "config" / "run_pipeline_config.json"
 
 _lock = threading.Lock()
@@ -23,8 +25,6 @@ _status: str = "idle"  # idle | running | done | error
 
 
 # ─── Public API ───────────────────────────────────────────────────────────────
-
-
 def load_config() -> dict:
     """Read the current config JSON from disk."""
     with open(CONFIG_PATH) as f:

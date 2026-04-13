@@ -1,0 +1,27 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+
+# Git
+.git/
+.gitignore
+
+# Credentials — never bake secrets into the image
+.env
+.env.*
+
+# Local data & outputs (fetched from S3 at runtime)
+data/
+outputs/
+
+# Dev / CI
+tests/
+docs/
+sandbox.txt
+*.md

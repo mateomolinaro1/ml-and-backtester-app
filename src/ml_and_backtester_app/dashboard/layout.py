@@ -31,7 +31,7 @@ def create_layout() -> html.Div:
             dbc.Tab(label="Config & Run", tab_id="tab-config"),
         ],
         id="tabs",
-        active_tab="tab-fmp",
+        active_tab="tab-config",
         className="mb-3",
     )
 
