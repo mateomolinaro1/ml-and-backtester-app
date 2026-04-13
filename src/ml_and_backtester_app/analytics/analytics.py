@@ -402,6 +402,12 @@ class AnalyticsFMP:
 
         plt.close(fig)
 
+        s3Utils.upload_df_with_index(
+            df=equity,
+            bucket=self.config.aws_bucket_name,
+            path=self.config.outputs_path + "/data/fmp_equity_curves.parquet",
+        )
+
         logger.info("Saved FMP equity curves plot to S3.")
 
     def _compute_performance_metrics(
@@ -530,6 +536,12 @@ class AnalyticsFMP:
 
         performance_table.index = ["LO FMP", "SO FMP", "Benchmark"]
         performance_table = performance_table.round(2)
+
+        s3Utils.upload_df_with_index(
+            df=performance_table,
+            bucket=self.config.aws_bucket_name,
+            path=self.config.outputs_path + "/data/fmp_performance_table.parquet",
+        )
 
         # === Render table ===
         fig, ax = plt.subplots(figsize=(8, 3))
@@ -678,6 +690,12 @@ class AnalyticsForecasting:
         )
         s3Utils.save_plot_to_s3(dm=self.dm, path_name=path_name, fig=fig)
         plt.close(fig)
+
+        s3Utils.upload_df_with_index(
+            df=df,
+            bucket=self.config.aws_bucket_name,
+            path=self.config.outputs_path + "/data/best_val_score_overtime.parquet",
+        )
 
     def _plot_best_hyperparams_overtime(self) -> None:
         hyperparams = self.objs["best_hyperparams_all_models_overtime"]
@@ -852,6 +870,12 @@ class AnalyticsForecasting:
         s3Utils.save_plot_to_s3(dm=self.dm, path_name=path_name, fig=fig)
         plt.close(fig)
 
+        s3Utils.upload_df_with_index(
+            df=rolling_rmse,
+            bucket=self.config.aws_bucket_name,
+            path=self.config.outputs_path + "/data/oos_rmse_overtime.parquet",
+        )
+
         self.rmse_df = rmse_df
 
     def _export_oos_rmse_table(self) -> None:
@@ -873,6 +897,12 @@ class AnalyticsForecasting:
         path_name = self.config.outputs_path + "/figures/oos_rmse_all_models.png"
         s3Utils.save_plot_to_s3(dm=self.dm, path_name=path_name, fig=fig)
         plt.close(fig)
+
+        s3Utils.upload_df_with_index(
+            df=df,
+            bucket=self.config.aws_bucket_name,
+            path=self.config.outputs_path + "/data/oos_rmse_table.parquet",
+        )
 
     def _compute_oos_sign_accuracy(self) -> None:
         """
@@ -922,6 +952,12 @@ class AnalyticsForecasting:
         )
         s3Utils.save_plot_to_s3(dm=self.dm, path_name=path_name, fig=fig)
         plt.close(fig)
+
+        s3Utils.upload_df_with_index(
+            df=res,
+            bucket=self.config.aws_bucket_name,
+            path=self.config.outputs_path + "/data/oos_sign_accuracy.parquet",
+        )
 
 class AnalyticsDynamicAllocation:
     def __init__(
@@ -981,6 +1017,22 @@ class AnalyticsDynamicAllocation:
         self._export_performance_table(
             perf_table,
             path_name=self.config.outputs_path + "/figures/performance_table.png",
+        )
+
+        # Save DataFrames for interactive dashboard charts
+        cum_returns_df = pd.concat(
+            {k: v.iloc[:, 0] for k, v in cum_rets.items()}, axis=1
+        )
+        _data_prefix = self.config.outputs_path + "/data"
+        s3Utils.upload_df_with_index(
+            df=cum_returns_df,
+            bucket=self.config.aws_bucket_name,
+            path=_data_prefix + "/dynamic_allocation_cum_returns.parquet",
+        )
+        s3Utils.upload_df_with_index(
+            df=perf_table,
+            bucket=self.config.aws_bucket_name,
+            path=_data_prefix + "/dynamic_allocation_performance_table.parquet",
         )
 
         logger.info("Completed dynamic allocation analytics.")

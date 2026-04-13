@@ -42,10 +42,12 @@ class Config:
         self.prices_path: str|None|Path = None
         self.outputs_path: str|None|Path = None
         self.s3_path: str|None|Path = None
+        self.daily_prices_path: str|None|Path = None
+        self.daily_macro_path: str|None|Path = None
 
-        # Files ext
-        self.macro_ext: str|None = None
-        self.prices_ext: str|None = None
+        # # Files ext
+        # self.macro_ext: str|None = None
+        # self.prices_ext: str|None = None
 
         # FMP
         self.decay: int|float|None = None
@@ -107,20 +109,26 @@ class Config:
                 self.ib_client_id = config.get("IB").get("IB_CLIENT_ID")
 
             # Paths
-            if config.get("PATHS").get("S3_FRED_PATH") is not None:
-                self.fred_path = config.get("PATHS").get("S3_FRED_PATH")
+            if config.get("PATHS").get("MONTHLY").get("S3_FRED_PATH") is not None:
+                self.fred_path = config.get("PATHS").get("MONTHLY").get("S3_FRED_PATH")
 
-            if config.get("PATHS").get("S3_CODES_PATH") is not None:
-                self.codes_path = config.get("PATHS").get("S3_CODES_PATH")
+            if config.get("PATHS").get("MONTHLY").get("S3_CODES_PATH") is not None:
+                self.codes_path = config.get("PATHS").get("MONTHLY").get("S3_CODES_PATH")
 
-            if config.get("PATHS").get("S3_PRICES_PATH") is not None:
-                self.prices_path = config.get("PATHS").get("S3_PRICES_PATH")
+            if config.get("PATHS").get("MONTHLY").get("S3_PRICES_PATH") is not None:
+                self.prices_path = config.get("PATHS").get("MONTHLY").get("S3_PRICES_PATH")
 
-            if config.get("PATHS").get("S3_OUTPUTS_PATH") is not None:
-                self.outputs_path = config.get("PATHS").get("S3_OUTPUTS_PATH")
+            if config.get("PATHS").get("COMMON").get("S3_OUTPUTS_PATH") is not None:
+                self.outputs_path = config.get("PATHS").get("COMMON").get("S3_OUTPUTS_PATH")
 
-            if config.get("PATHS").get("S3_PATH") is not None:
-                self.s3_path = config.get("PATHS").get("S3_PATH")
+            if config.get("PATHS").get("COMMON").get("S3_PATH") is not None:
+                self.s3_path = config.get("PATHS").get("COMMON").get("S3_PATH")
+
+            if config.get("PATHS").get("DAILY").get("S3_PRICES_PATH") is not None:
+                self.daily_prices_path = config.get("PATHS").get("DAILY").get("S3_PRICES_PATH")
+
+            if config.get("PATHS").get("DAILY").get("S3_MACRO_PATH") is not None:
+                self.daily_macro_path = config.get("PATHS").get("DAILY").get("S3_MACRO_PATH")
 
             # FMP
             self.decay = config.get("FMP").get("DECAY")

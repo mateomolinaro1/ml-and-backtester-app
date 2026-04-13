@@ -114,9 +114,9 @@ class s3Utils:
         :return:
         """
         # Check data types of inputs
-        if not hasattr(s3, 'put_object'):
-            logger.error("s3 must be a boto3 BaseClient instance.")
-            raise ValueError("s3 must be a boto3 BaseClient instance.")
+        # if not hasattr(s3, 'put_object'):
+        #     logger.error("s3 must be a boto3 BaseClient instance.")
+        #     raise ValueError("s3 must be a boto3 BaseClient instance.")
         if not isinstance(bucket_name, str):
             logger.error("bucket_name must be a string.")
             raise ValueError("bucket_name must be a string.")

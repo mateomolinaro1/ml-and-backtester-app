@@ -145,8 +145,7 @@ class DataHandler:
             self.data_path / "wrds_gross_query.parquet": "data/wrds_gross_query.parquet",
             self.data_path / "ib_historical_prices.parquet": "data/ib_historical_prices.parquet",
             self.data_path / "tickers_across_dates.pkl": "data/tickers_across_dates.pkl",
-            self.data_path / "dates.pkl": "data/dates.pkl",
-            self.data_path / "portfolio_value_historical.parquet": "paper_trading/portfolio_value_historical.parquet",
+            self.data_path / "dates.pkl": "data/dates.pkl"
         }
         self.bucket_name = bucket_name
         self.s3_files_downloaded = None
@@ -1331,16 +1330,6 @@ class DataHandler:
 
         # Wait a bit to ensure the files are available on s3
         time.sleep(10)
-
-        # Step 4.0 update portfolio_value
-        # For the orders df we also need to store the historical portfolio value
-        updated_pv = self.update_portfolio_value()
-        if updated_pv:
-            logger.info("New portfolio value data to update.")
-            s3Utils.replace_existing_files_in_s3(s3=self.s3, bucket_name=self.bucket_name, files_dct=updated_pv)
-            logger.info("Uploaded updated portfolio value file to S3.")
-        else:
-            logger.info("No new portfolio value data to update.")
 
         # Step 4: update ib files
         updated_ib_objects = self.update_ib_data()
