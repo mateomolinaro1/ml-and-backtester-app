@@ -89,12 +89,12 @@ DYNAMIC_ALLOC_FIGURES: dict[str, str] = {
 # ─── S3 keys: parquet data (for interactive charts) ──────────────────────────
 
 DATA: dict[str, str] = {
-    "fmp_equity_curves": "outputs/figures/fmp_equity_curves.parquet",
-    "fmp_performance": "outputs/figures/fmp_performance_table.parquet",
-    "best_val_score": "outputs/figures/best_val_score_overtime.parquet",
-    "oos_rmse_overtime": "outputs/figures/oos_rmse_overtime.parquet",
-    "oos_rmse_table": "outputs/figures/oos_rmse_table.parquet",
-    "oos_sign_accuracy": "outputs/figures/oos_sign_accuracy.parquet",
-    "dynamic_alloc_cum_returns": "outputs/figures/dynamic_allocation_cum_returns.parquet",
-    "dynamic_alloc_performance": "outputs/figures/dynamic_allocation_performance_table.parquet",
+    "fmp_equity_curves": "outputs/figures/fmp_equity_curves.png",
+    "fmp_performance": "outputs/figures/fmp_performance_summary.png",
+    "best_val_score": "outputs/figures/best_val_score_overtime.png",
+    "oos_rmse_overtime": "outputs/figures/oos_rmse_all_models_overtime.png",
+    "oos_rmse_table": "outputs/figures/oos_rmse_all_models.png",
+    "oos_sign_accuracy": "outputs/figures/oos_sign_accuracy_all_models.png",
+    "dynamic_alloc_cum_returns": "outputs/figures/dynamic_allocation_cum_returns.png",
+    "dynamic_alloc_performance": "outputs/figures/performance_table.png",
 }

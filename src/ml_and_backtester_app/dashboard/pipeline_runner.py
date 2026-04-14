@@ -1,106 +1,124 @@
 """
-Manages pipeline execution state for the dashboard.
+Dashboard-side pipeline interface.
 
-Runs main.py in a background subprocess, streams stdout/stderr into an
-in-memory buffer, and exposes live output + status to Dash callbacks.
+Instead of launching main.py locally, this module:
+  - pushes run-jobs to AWS SQS  (picked up by worker.py on your machine)
+  - reads status / log output from S3  (written there by worker.py)
+
+Required env vars:
+    SQS_JOBS_QUEUE_URL      URL of the pipeline-jobs SQS queue
+    AWS_BUCKET_NAME         defaults to ml-and-backtester-app
+    AWS_DEFAULT_REGION      defaults to eu-north-1
+    AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY
 """
 
 import json
+import logging
 import os
-import subprocess
-import sys
-import threading
-from pathlib import Path
+import uuid
+
+import boto3
+from botocore.config import Config as BotocoreConfig
 from ml_and_backtester_app.utils.config import Config
-config = Config()
 
-# src/ml_and_backtester_app/dashboard/ → 3 parents → src/ → 1 more → project root
-ROOT_DIR = config.ROOT_DIR
-CONFIG_PATH = ROOT_DIR / "config" / "run_pipeline_config.json"
+logger = logging.getLogger(__name__)
 
-_lock = threading.Lock()
-_process: subprocess.Popen | None = None
-_output_lines: list[str] = []
-_status: str = "idle"  # idle | running | done | error
+_config = Config()
+_ROOT_DIR = _config.ROOT_DIR
+CONFIG_PATH = _ROOT_DIR / "config" / "run_pipeline_config.json"
+
+BUCKET = os.getenv("AWS_BUCKET_NAME", "ml-and-backtester-app")
+REGION = os.getenv("AWS_DEFAULT_REGION", "eu-north-1")
+JOBS_QUEUE_URL = os.getenv("SQS_JOBS_QUEUE_URL", "")
+
+# S3 keys — must match worker.py
+STATUS_KEY = "outputs/pipeline/status.json"
+LOG_KEY = "outputs/pipeline/pipeline.log"
+STOP_KEY = "outputs/pipeline/stop_requested"
+
+# Short timeouts so a missing object or network blip never hangs the UI
+_BOTO_CFG = BotocoreConfig(connect_timeout=5, read_timeout=10, retries={"max_attempts": 1})
 
 
-# ─── Public API ───────────────────────────────────────────────────────────────
+def _s3():
+    return boto3.client(
+        "s3",
+        region_name=REGION,
+        aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+        aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+        config=_BOTO_CFG,
+    )
+
+
+def _sqs():
+    return boto3.client(
+        "sqs",
+        region_name=REGION,
+        aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+        aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+        config=_BOTO_CFG,
+    )
+
+
+# ─── Public API (called by callbacks.py) ─────────────────────────────────────
+
+
 def load_config() -> dict:
-    """Read the current config JSON from disk."""
+    """Load the config from the file baked into the image / local repo."""
     with open(CONFIG_PATH) as f:
         return json.load(f)
 
 
 def get_status() -> str:
-    """Return the pipeline status, refreshing if the process just finished."""
-    global _status, _process
-    if _status == "running" and _process is not None and _process.poll() is not None:
-        with _lock:
-            _status = "done" if _process.returncode == 0 else "error"
-    return _status
+    """Read the current pipeline status from S3. Returns idle/running/done/error."""
+    try:
+        response = _s3().get_object(Bucket=BUCKET, Key=STATUS_KEY)
+        data = json.loads(response["Body"].read())
+        return data.get("status", "idle")
+    except Exception:
+        return "idle"
 
 
 def get_output() -> str:
-    """Return all captured stdout/stderr so far as a single string."""
-    with _lock:
-        return "".join(_output_lines)
+    """Read the accumulated pipeline log from S3."""
+    try:
+        response = _s3().get_object(Bucket=BUCKET, Key=LOG_KEY)
+        return response["Body"].read().decode("utf-8", errors="replace")
+    except Exception:
+        return ""
 
 
 def start(config_json: str) -> tuple[bool, str]:
     """
-    Validate *config_json*, write it to disk, then launch main.py.
-
-    Returns (success, message).
+    Validate *config_json* and push a run-job to SQS.
+    worker.py will pick it up and execute the pipeline.
     """
-    global _process, _output_lines, _status
+    if not JOBS_QUEUE_URL:
+        return False, "SQS_JOBS_QUEUE_URL is not configured."
 
-    # Validate JSON before touching the file
     try:
         cfg = json.loads(config_json)
     except json.JSONDecodeError as exc:
         return False, f"Invalid JSON — {exc}"
 
-    with _lock:
-        if _status == "running" and _process is not None and _process.poll() is None:
-            return False, "Pipeline is already running."
+    if get_status() == "running":
+        return False, "Pipeline is already running."
 
-        # Persist updated config
-        try:
-            with open(CONFIG_PATH, "w") as f:
-                json.dump(cfg, f, indent=2)
-        except OSError as exc:
-            return False, f"Could not save config: {exc}"
+    job_id = str(uuid.uuid4())[:8]
+    message = json.dumps({"action": "run", "config": cfg, "job_id": job_id})
 
-        _output_lines = []
-        _status = "running"
-        _process = subprocess.Popen(
-            [sys.executable, str(ROOT_DIR / "main.py")],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            cwd=str(ROOT_DIR),
-            env=os.environ.copy(),
-        )
+    try:
+        _sqs().send_message(QueueUrl=JOBS_QUEUE_URL, MessageBody=message)
+    except Exception as exc:
+        return False, f"Could not send job to SQS: {exc}"
 
-    def _reader() -> None:
-        global _status
-        for line in _process.stdout:
-            with _lock:
-                _output_lines.append(line)
-        _process.wait()
-        with _lock:
-            _status = "done" if _process.returncode == 0 else "error"
-
-    threading.Thread(target=_reader, daemon=True).start()
-    return True, "Pipeline started."
+    return True, f"Job {job_id} queued — waiting for the worker to pick it up."
 
 
 def stop() -> str:
-    """Terminate the running pipeline process."""
-    global _status, _process
-    with _lock:
-        if _process is not None and _process.poll() is None:
-            _process.terminate()
-            _status = "idle"
-            return "Pipeline terminated by user."
-        return "No pipeline currently running."
+    """Ask worker.py to terminate the running pipeline via an S3 flag file."""
+    try:
+        _s3().put_object(Bucket=BUCKET, Key=STOP_KEY, Body=b"")
+        return "Stop signal sent to worker."
+    except Exception as exc:
+        return f"Could not send stop signal: {exc}"

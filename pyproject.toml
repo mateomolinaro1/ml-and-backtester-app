@@ -32,6 +32,7 @@ dependencies = [
     "plotly>=5.19.0",
     "dash-bootstrap-components>=1.5.0",
     "a2wsgi>=1.10.0",
+    "psutil>=7.2.2",
 ]
 
 [tool.setuptools]

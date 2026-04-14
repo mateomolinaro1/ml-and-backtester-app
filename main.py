@@ -10,6 +10,7 @@ from ml_and_backtester_app.analytics.analytics import AnalyticsFMP, AnalyticsFor
     AnalyticsDynamicAllocation
 import sys
 import logging
+import psutil, os
 load_dotenv()
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -17,17 +18,21 @@ logging.basicConfig(
         stream=sys.stdout,
         format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
     )
-
+logger = logging.getLogger(__name__)
 config = Config()
-# print("--- DEBUG CONFIG ---")
-# print(f"Attributs disponibles : {vars(config).keys()}")
-# print(f"Valeur trouvée pour method : {getattr(config, 'estimation_method', 'RIEN TROUVÉ')}")
 
+def log_memory(label):
+    mem = psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024
+    logger.info(f"[MEMORY] {label}: {mem:.0f} MB")
 
 # Data
+logger.info("Loading data...")
+log_memory("before DataManager")
 data_manager = DataManager(config=config)
+log_memory("after DataManager")
 
 # FMP
+logger.info("Building Factor Mimicking Portfolios...")
 fmp = FactorMimickingPortfolio(
     config=config,
     data=data_manager,
@@ -35,8 +40,10 @@ fmp = FactorMimickingPortfolio(
     rf=None
 )
 fmp.build_macro_portfolios()
+log_memory("after FMP")
 
 # Analytics FMP
+logger.info("Getting analytics on FMP...")
 analytics_fmp = AnalyticsFMP(
     config=config,
     dm=data_manager,
@@ -45,6 +52,7 @@ analytics_fmp = AnalyticsFMP(
 analytics_fmp.get_analytics()
 
 # Feature Engineering
+logger.info("Getting features...")
 fe = FeaturesEngineering(config=config, data=data_manager)
 fe.get_features()
 
@@ -82,6 +90,7 @@ scheme.run(
 )
 
 # Analytics Forecasting
+logger.info("Getting analytics on forecasting...")
 analytics_forecasting = AnalyticsForecasting(
     config=config,
     dm=data_manager,
@@ -90,6 +99,7 @@ analytics_forecasting = AnalyticsForecasting(
 analytics_forecasting.get_analytics()
 
 # Dynamic Allocation
+logger.info("Running Dynamic Allocation backtest...")
 dynamic_alloc = DynamicAllocation(
     config=config,
     predictions=scheme.oos_predictions,
@@ -100,6 +110,7 @@ dynamic_alloc = DynamicAllocation(
 dynamic_alloc.run_backtest()
 
 # Analytics Dynamic Allocation
+logger.info("Getting analytics on Dynamic Allocation backtest...")
 analytics_dynamic_alloc = AnalyticsDynamicAllocation(
     config=config,
     dm=data_manager,

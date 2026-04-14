@@ -182,7 +182,6 @@ class FactorMimickingPortfolio:
 
             # For each asset we run a regression
             for i,col in enumerate(ys.columns):
-                # logger.info(f"Running WLS ({i+1}/{len(ys_subset.columns)})")
                 y = ys_subset.loc[:,col]
 
                 # Align X and y
