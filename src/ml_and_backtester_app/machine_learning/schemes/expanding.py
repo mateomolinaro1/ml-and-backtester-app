@@ -1,5 +1,6 @@
 from __future__ import annotations
 import time
+import joblib
 import numpy as np
 import pandas as pd
 from joblib import Parallel, delayed
@@ -10,8 +11,13 @@ import logging
 from ml_and_backtester_app.machine_learning.models import Model
 from ml_and_backtester_app.machine_learning.features_selection import PCAFactorExtractor
 
+import os
+
 logger = logging.getLogger(__name__)
 
+tmp_dir = os.path.join(os.getcwd(), "tmp") 
+os.makedirs(tmp_dir, exist_ok=True)
+logger.info(f"Dossier temporaire configuré : {tmp_dir}")
 
 class ExpandingWindowScheme(EstimationScheme):
     # pass because already inherited
@@ -75,7 +81,7 @@ class ExpandingWindowScheme(EstimationScheme):
                         columns=columns_list,
                         dtype=float,
                     )
-
+    
 
         # -----------------------------
         # STORAGE
@@ -162,7 +168,7 @@ class ExpandingWindowScheme(EstimationScheme):
                 # =========================
                 # PARALLEL GRID SEARCH
                 # =========================
-                results = Parallel(n_jobs=-1)(
+                results = Parallel(n_jobs=1)(
                     delayed(evaluate)(hp)
                     for hp in hyperparams_all_combinations[model_name]
                 )
@@ -194,6 +200,14 @@ class ExpandingWindowScheme(EstimationScheme):
                 model_final = ModelClass(**best_hyperparams)
                 model_final.fit(X_full, y_full)
 
+
+                model_filename = f"{model_name}_{date_t.strftime('%Y-%m-%d')}.pkl"
+                local_path = os.path.join(tmp_dir, model_filename)
+                joblib.dump(model_final, local_path)
+                s3_key = f"models/expanding/{model_name}/{model_filename}"
+                self.dm.aws.s3.upload(local_path, key=s3_key)
+                os.remove(local_path) # Supprime le fichier local après l'envoi réussi
+
                 test_date = self.date_range[t]
                 test_df = self.data[self.data.index == test_date]
                 X_test, y_test = self._split_xy(test_df)
@@ -202,8 +216,10 @@ class ExpandingWindowScheme(EstimationScheme):
 
                 y_hat = model_final.predict(X_test)
 
-                self.oos_predictions[model_name].loc[test_date,self.config.macro_var_name] = y_hat.values[0]
-                self.oos_true.loc[test_date,self.config.macro_var_name] = y_test.values[0]
+                self.oos_predictions[model_name].loc[test_date, self.config.macro_var_name] = float(np.ravel(y_hat)[0])
+                self.oos_true.loc[test_date, self.config.macro_var_name] = float(np.ravel(y_test.values)[0])
+
+                logger.info(f"{model_name} done in {round((time.time() - t0) / 60, 3)} min")
 
                 # -----------------------------
                 # STORE COEFFICIENTS (linear models only)
@@ -225,6 +241,58 @@ class ExpandingWindowScheme(EstimationScheme):
                     f"{round((time.time() - t0) / 60, 3)} min"
                 )
 
+        logger.info("Calcul des performances globales...")
+
+        rmse_results = {}
+        accuracy_results = {}
+
+        # On parcourt chaque modèle pour calculer son score global
+        for model_name, preds_df in self.oos_predictions.items():
+            y_p = preds_df[self.config.macro_var_name]
+            y_t = self.oos_true[self.config.macro_var_name]
+            
+            # On enlève les dates vides pour ne pas fausser le calcul
+            mask = y_p.notna() & y_t.notna()
+
+            if mask.any():
+                # On calcule l'erreur moyenne (RMSE) -> remplit le graph 1
+                rmse = np.sqrt(mean_squared_error(y_t[mask], y_p[mask]))
+                rmse_results[model_name] = rmse
+                
+                # On calcule la précision du signe -> remplit le graph 2
+                correct_sign = np.sign(y_t[mask]) == np.sign(y_p[mask])
+                accuracy_results[model_name] = correct_sign.mean()
+
+        # On transforme ces chiffres en jolis tableaux (DataFrames)
+        rmse_df = pd.DataFrame.from_dict(rmse_results, orient='index', columns=['RMSE'])
+        accuracy_df = pd.DataFrame.from_dict(accuracy_results, orient='index', columns=['Accuracy'])
+
+        # --- ENVOI SUR S3 DANS LE BON DOSSIER ---
+        # --- 5. ENVOI FINAL SUR S3 (VERSION COMPLÈTE POUR LE DASHBOARD) ---
+        base_s3 = self.config.outputs_path + "/figures/expanding/"
+        logger.info(f"Envoi des résultats finaux vers {base_s3}...")
+
+        # A. Les indispensables (Le HAUT du dashboard)
+        # On envoie sous deux noms pour être CERTAIN que le dashboard en trouve un
+        self.dm.aws.s3.upload(src=rmse_df, key=base_s3 + "oos_rmse_table.parquet")
+        self.dm.aws.s3.upload(src=rmse_df, key=base_s3 + "oos_rmse_overtime.parquet")
+        self.dm.aws.s3.upload(src=accuracy_df, key=base_s3 + "oos_sign_accuracy.parquet")
+
+        # B. Les prédictions et la réalité
+        self.dm.aws.s3.upload(src=self.oos_predictions, key=base_s3 + "oos_predictions.pkl")
+        self.dm.aws.s3.upload(src=self.oos_true, key=base_s3 + "oos_true.parquet")
+
+        # C. Les détails techniques (Le BAS du dashboard - Ne pas les oublier !)
+        self.dm.aws.s3.upload(src=self.best_hyperparams_all_models_overtime, key=base_s3 + "best_hyperparams_all_models_overtime.pkl")
+        self.dm.aws.s3.upload(src=self.best_params_all_models_overtime, key=base_s3 + "best_params_all_models_overtime.pkl")
+        self.dm.aws.s3.upload(src=self.best_score_all_models_overtime, key=base_s3 + "best_score_all_models_overtime.parquet")
+
+        # D. Les données sources
+        self.dm.aws.s3.upload(src=self.data, key=base_s3 + "data.parquet")
+
+        logger.info("Pipeline terminé ! Toutes les données du Dashboard ont été écrasées avec tes résultats.")
+    
+
     # -----------------------------
     # SPLITS
     # -----------------------------
@@ -242,14 +310,14 @@ class ExpandingWindowScheme(EstimationScheme):
 
     def _load_models(self):
         paths = [
-            self.config.outputs_path + "/forecasting" + "/best_hyperparams_all_models_overtime.pkl",
-            self.config.outputs_path + "/forecasting" + "/best_params_all_models_overtime.pkl",
-            self.config.outputs_path + "/forecasting" + "/best_score_all_models_overtime.parquet",
-            self.config.outputs_path + "/forecasting" + "/oos_predictions.pkl",
-            self.config.outputs_path + "/forecasting" + "/oos_true.pkl",
-            self.config.outputs_path + "/forecasting" + "/data.parquet",
-            self.config.outputs_path + "/forecasting" + "/x.parquet",
-            self.config.outputs_path + "/forecasting" + "/y.parquet",
+            self.config.outputs_path + "/figures/expanding" + "/best_hyperparams_all_models_overtime.pkl",
+            self.config.outputs_path + "/figures/expanding" + "/best_params_all_models_overtime.pkl",
+            self.config.outputs_path + "/figures/expanding" + "/best_score_all_models_overtime.parquet",
+            self.config.outputs_path + "/figures/expanding" + "/oos_predictions.pkl",
+            self.config.outputs_path + "/figures/expanding" + "/oos_true.parquet",
+            self.config.outputs_path + "/figures/expanding" + "/data.parquet",
+            # self.config.outputs_path + "/figures/expanding" + "/x.parquet",
+            # self.config.outputs_path + "/figures/expanding" + "/y.parquet",
         ]
         loaded_obj_list = self.dm.aws.s3.load(
             key=paths
@@ -275,5 +343,3 @@ class ExpandingWindowScheme(EstimationScheme):
         self.oos_predictions = loaded_obj["oos_predictions"]
         self.oos_true = loaded_obj["oos_true"]
         self.data = loaded_obj["data"]
-        self.x = loaded_obj["x"]
-        self.y = loaded_obj["y"]

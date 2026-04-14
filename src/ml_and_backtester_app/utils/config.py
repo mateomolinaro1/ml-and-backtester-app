@@ -69,6 +69,8 @@ class Config:
 
         # Forecasting
         self.load_or_train_models: str | None = None  # "load" or "train"
+        self.estimation_method: str | None = None
+        self.rolling_window_size: int | None = None
         self.forecast_horizon: int|None = None
         self.validation_window: int|None = None
         self.min_nb_periods_required: int|None = None
@@ -150,6 +152,8 @@ class Config:
 
             # Forcasting
             self.load_or_train_models = config.get("FORECASTING").get("LOAD_OR_TRAIN_MODELS")
+            self.estimation_method = config.get("FORECASTING").get("ESTIMATION_METHOD", "expanding")
+            self.rolling_window_size = config.get("FORECASTING").get("ROLLING_WINDOW_SIZE", 252) # 252 par défaut si oublié
             self.forecast_horizon = config.get("FORECASTING").get("FORECAST_HORIZON")
             self.validation_window = config.get("FORECASTING").get("VALIDATION_WINDOW")
             self.min_nb_periods_required = config.get("FORECASTING").get("MIN_NB_PERIODS_REQUIRED")

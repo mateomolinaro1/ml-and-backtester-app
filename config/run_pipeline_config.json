@@ -49,6 +49,8 @@
     "LAGS": []
   },
   "FORECASTING": {
+    "ESTIMATION_METHOD": "rolling",
+    "ROLLING_WINDOW_SIZE": 120,
     "LOAD_OR_TRAIN_MODELS": "load",
     "FORECAST_HORIZON": 1,
     "VALIDATION_WINDOW": 12,
