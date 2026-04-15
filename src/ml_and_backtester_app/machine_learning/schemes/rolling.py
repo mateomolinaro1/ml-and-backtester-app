@@ -210,7 +210,7 @@ class RollingWindowScheme(EstimationScheme):
         rmse_df = pd.DataFrame.from_dict(rmse_results, orient='index', columns=['RMSE'])
         accuracy_df = pd.DataFrame.from_dict(accuracy_results, orient='index', columns=['Accuracy'])
 
-        base_s3 = self.config.outputs_path + "/figures/rolling/"
+        base_s3 = self.config.outputs_path + "/forecasting/rolling/"
         self.dm.aws.s3.upload(src=rmse_df, key=base_s3 + "oos_rmse_table.parquet")
         self.dm.aws.s3.upload(src=rmse_df, key=base_s3 + "oos_rmse_overtime.parquet")
         self.dm.aws.s3.upload(src=accuracy_df, key=base_s3 + "oos_sign_accuracy.parquet")
@@ -233,12 +233,12 @@ class RollingWindowScheme(EstimationScheme):
 
     def _load_models(self):
         paths = [
-            self.config.outputs_path + "/figures/rolling" + "/best_hyperparams_all_models_overtime.pkl",
-            self.config.outputs_path + "/figures/rolling" + "/best_params_all_models_overtime.pkl",
-            self.config.outputs_path + "/figures/rolling" + "/best_score_all_models_overtime.parquet",
-            self.config.outputs_path + "/figures/rolling" + "/oos_predictions.pkl",
-            self.config.outputs_path + "/figures/rolling" + "/oos_true.parquet",
-            self.config.outputs_path + "/figures/rolling" + "/data.parquet",
+            self.config.outputs_path + "/forecasting/rolling" + "/best_hyperparams_all_models_overtime.pkl",
+            self.config.outputs_path + "/forecasting/rolling" + "/best_params_all_models_overtime.pkl",
+            self.config.outputs_path + "/forecasting/rolling" + "/best_score_all_models_overtime.parquet",
+            self.config.outputs_path + "/forecasting/rolling" + "/oos_predictions.pkl",
+            self.config.outputs_path + "/forecasting/rolling" + "/oos_true.parquet",
+            self.config.outputs_path + "/forecasting/rolling" + "/data.parquet",
             # self.config.outputs_path + "/figures/rolling" + "/x.parquet",
             # self.config.outputs_path + "/figures/rolling" + "/y.parquet",
         ]

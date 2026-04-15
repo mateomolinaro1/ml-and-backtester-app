@@ -269,7 +269,7 @@ class ExpandingWindowScheme(EstimationScheme):
 
         # --- ENVOI SUR S3 DANS LE BON DOSSIER ---
         # --- 5. ENVOI FINAL SUR S3 (VERSION COMPLÈTE POUR LE DASHBOARD) ---
-        base_s3 = self.config.outputs_path + "/figures/expanding/"
+        base_s3 = self.config.outputs_path + "/forecasting/expanding/"
         logger.info(f"Envoi des résultats finaux vers {base_s3}...")
 
         # A. Les indispensables (Le HAUT du dashboard)
@@ -310,14 +310,14 @@ class ExpandingWindowScheme(EstimationScheme):
 
     def _load_models(self):
         paths = [
-            self.config.outputs_path + "/figures/expanding" + "/best_hyperparams_all_models_overtime.pkl",
-            self.config.outputs_path + "/figures/expanding" + "/best_params_all_models_overtime.pkl",
-            self.config.outputs_path + "/figures/expanding" + "/best_score_all_models_overtime.parquet",
-            self.config.outputs_path + "/figures/expanding" + "/oos_predictions.pkl",
-            self.config.outputs_path + "/figures/expanding" + "/oos_true.parquet",
-            self.config.outputs_path + "/figures/expanding" + "/data.parquet",
-            # self.config.outputs_path + "/figures/expanding" + "/x.parquet",
-            # self.config.outputs_path + "/figures/expanding" + "/y.parquet",
+            self.config.outputs_path + "/forecasting/expanding" + "/best_hyperparams_all_models_overtime.pkl",
+            self.config.outputs_path + "/forecasting/expanding" + "/best_params_all_models_overtime.pkl",
+            self.config.outputs_path + "/forecasting/expanding" + "/best_score_all_models_overtime.parquet",
+            self.config.outputs_path + "/forecasting/expanding" + "/oos_predictions.pkl",
+            self.config.outputs_path + "/forecasting/expanding" + "/oos_true.parquet",
+            self.config.outputs_path + "/forecasting/expanding" + "/data.parquet",
+            # self.config.outputs_path + "/forecasting/expanding" + "/x.parquet",
+            # self.config.outputs_path + "/forecasting/expanding" + "/y.parquet",
         ]
 
         loaded_obj_list = self.dm.aws.s3.load(
