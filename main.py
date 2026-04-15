@@ -18,7 +18,6 @@ logging.basicConfig(
         stream=sys.stdout,
         format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
     )
-logger = logging.getLogger(__name__)
 config = Config()
 
 def log_memory(label):
