@@ -319,6 +319,7 @@ class ExpandingWindowScheme(EstimationScheme):
             # self.config.outputs_path + "/figures/expanding" + "/x.parquet",
             # self.config.outputs_path + "/figures/expanding" + "/y.parquet",
         ]
+
         loaded_obj_list = self.dm.aws.s3.load(
             key=paths
         )
