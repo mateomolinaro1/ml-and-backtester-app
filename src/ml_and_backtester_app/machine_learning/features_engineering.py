@@ -23,7 +23,7 @@ class FeaturesEngineering:
         var = var.astype(float)
 
         if code_transfo == 1.0:
-            return var
+            return var  
         elif code_transfo == 2.0:
             return var.diff()
         elif code_transfo == 3.0:
