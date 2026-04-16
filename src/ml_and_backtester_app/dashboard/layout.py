@@ -1,12 +1,22 @@
 from dash import html, dcc
 import dash_bootstrap_components as dbc
+# Import nécessaire pour le typage (optionnel mais propre)
+from ml_and_backtester_app.dashboard.s3_loader import S3PathManager
 
+def create_layout(paths: S3PathManager) -> html.Div:
+    # On peut maintenant utiliser paths.method pour personnaliser la barre
+    method_label = paths.method.capitalize() # "Rolling" ou "Expanding"
 
-def create_layout() -> html.Div:
     navbar = dbc.Navbar(
         dbc.Container(
             [
-                dbc.NavbarBrand("ML Backtester Dashboard", className="fw-bold fs-5"),
+                dbc.NavbarBrand(
+                    [
+                        html.Span("ML Backtester Dashboard "),
+                        dbc.Badge(method_label, color="info", className="ms-2 fs-6")
+                    ], 
+                    className="fw-bold fs-5"
+                ),
                 dbc.Button(
                     "Refresh",
                     id="btn-refresh",

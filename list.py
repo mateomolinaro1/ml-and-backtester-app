@@ -1,7 +1,6 @@
 import boto3
 import os
 from dotenv import load_dotenv
-from collections import defaultdict
 
 load_dotenv()
 
@@ -13,43 +12,30 @@ s3 = boto3.client(
 )
 
 bucket_name = "ml-and-backtester-app"
+prefix_to_search = "outputs/"  # On définit le dossier cible
 
-print(f"--- Arborescence complète des dossiers de {bucket_name} ---")
+print(f"--- Liste des fichiers dans le dossier : {prefix_to_search} ---")
 
 paginator = s3.get_paginator('list_objects_v2')
-folders = set()
-file_counts = defaultdict(int)
 
-# On récupère tous les fichiers pour en déduire les dossiers
-for page in paginator.paginate(Bucket=bucket_name):
+# On utilise 'Prefix' pour dire à S3 de ne regarder que ce dossier
+operation_parameters = {'Bucket': bucket_name, 'Prefix': prefix_to_search}
+
+file_found = False
+
+for page in paginator.paginate(**operation_parameters):
     if 'Contents' in page:
         for obj in page['Contents']:
-            path = obj['Key']
-
-            # Ignorer les "dossiers" S3 vides éventuels
-            if path.endswith('/'):
+            file_path = obj['Key']
+            
+            # On ignore l'objet qui représente le dossier lui-même
+            if file_path == prefix_to_search:
                 continue
+            
+            file_found = True
+            # Taille en KB pour que ce soit lisible
+            size = round(obj['Size'] / 1024, 2)
+            print(f"📄 {file_path} ({size} KB)")
 
-            if '/' in path:
-                # Ex: 'models/v1/weights.h5' -> 'models/', 'models/v1/'
-                parts = path.split('/')
-                current_path = ""
-
-                for i in range(len(parts) - 1):
-                    current_path += parts[i] + "/"
-                    folders.add(current_path)
-
-                # Compter le fichier dans son dossier direct
-                parent_folder = '/'.join(parts[:-1]) + '/'
-                file_counts[parent_folder] += 1
-
-# Trier et afficher proprement
-for folder in sorted(folders):
-    depth = folder.count('/') - 1
-    indent = "  " * depth
-    folder_name = folder.split('/')[-2]
-    nb_files = file_counts.get(folder, 0)
-    print(f"{indent}📁 {folder_name}/ ({nb_files} fichiers)")
-
-if not folders:
-    print("Aucun dossier trouvé.")
+if not file_found:
+    print(f"Aucun fichier trouvé dans le dossier '{prefix_to_search}'.")

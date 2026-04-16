@@ -18,8 +18,10 @@ from dotenv import load_dotenv
 # Load .env from the project root before anything else so AWS credentials are
 # available for both the analytics pipeline and this dashboard process.
 from ml_and_backtester_app.utils.config import Config
+from ml_and_backtester_app.dashboard.s3_loader import S3PathManager
 load_dotenv()
 config = Config()
+paths = S3PathManager(config)
 _ROOT = config.ROOT_DIR
 
 import dash
@@ -33,6 +35,8 @@ from ml_and_backtester_app.dashboard.layout import create_layout
 
 # ─── Dash / Flask ─────────────────────────────────────────────────────────────
 
+# ─── Dash / Flask ─────────────────────────────────────────────────────────────
+
 flask_server = Flask(__name__)
 
 dash_app = dash.Dash(
@@ -43,8 +47,9 @@ dash_app = dash.Dash(
     title="ML Backtester Dashboard",
 )
 
-dash_app.layout = create_layout()
-register(dash_app)
+# PASSAGE DES CHEMINS : On donne l'objet 'paths' au layout et aux callbacks
+dash_app.layout = create_layout(paths) 
+register(dash_app, paths)
 
 # ─── FastAPI wrapper ──────────────────────────────────────────────────────────
 
