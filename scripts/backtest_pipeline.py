@@ -94,4 +94,5 @@ analyzer = analysis.PerformanceAnalyser(
     rebal_freq=f"{22} {'d'}"
 )
 analyzer.compute_metrics()
+analyzer.plot_cumulative_performance(saving_path="./outputs/figures/cumulative_performance.png")
 bench_net_returns = backtester_bench.portfolio_net_returns.loc[backtester.start_date:, :]
