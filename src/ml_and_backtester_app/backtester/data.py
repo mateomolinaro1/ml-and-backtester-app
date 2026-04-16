@@ -110,7 +110,8 @@ class DataManager:
     """Class to manage, clean and preprocess data"""
     def __init__(self, data_source:DataSource,
                  max_consecutive_nan:int=5,
-                 rebase_prices:bool=False, n_implementation_lags:int=1):
+                 rebase_prices:bool=False, n_implementation_lags:int=1,
+                 already_returns:bool=True):
         """
 
         :param data_source:
@@ -127,6 +128,7 @@ class DataManager:
         self.raw_data = None
         self.cleaned_data = None
         self.returns = None
+        self.already_returns = already_returns
         # Aligned data
         self.aligned_prices = None
         self.aligned_returns = None
@@ -134,7 +136,17 @@ class DataManager:
     def load_data(self):
         """Load data from the data source"""
         self.raw_data = self.data_source.fetch_data()
+        self.raw_data = self._format_data(self.raw_data)
         return self.raw_data
+
+    @staticmethod
+    def _format_data(df_data:pd.DataFrame):
+        """
+        Format the dataframe by going long to wide
+        :return:
+        """
+        wide_df = df_data.pivot(index="date", columns="permno", values="ret")
+        return wide_df
 
     def clean_data(self,crop_lookback_period:int=0):
         """Clean the data by filling missing values"""
@@ -207,7 +219,10 @@ class DataManager:
         if self.cleaned_data is None:
             self.clean_data(crop_lookback_period=crop_lookback_period)
         if self.returns is None:
-            self.compute_returns()
+            if self.already_returns:
+                self.returns = self.cleaned_data
+            else:
+                self.compute_returns()
         if self.aligned_returns is None:
             self.account_implementation_lags()
 
