@@ -25,6 +25,7 @@ def run():
         bt_params = json.load(f)
 
     print(f"Starting Backtest: {bt_params.get('strategy_name', 'CSMOM')}...")
+    rebal = bt_params.get("nb_period_to_exclude", 22) 
 
     # 2. Récupération des données
     ds = data.AmazonS3(
@@ -45,7 +46,7 @@ def run():
         signal_function_inputs={
             "df": dm.cleaned_data,
             "nb_period": bt_params.get("nb_period", 252),
-            "nb_period_to_exclude": bt_params.get("nb_period_to_exclude", 22),
+            "nb_period_to_exclude": rebal,
             "exclude_last_period": True
         }
     )
@@ -64,7 +65,7 @@ def run():
     ptf = portfolio.EqualWeightingScheme(
         returns=dm.returns,
         signals=strategy.signals,
-        rebal_periods=22,
+        rebal_periods=rebal,
         portfolio_type="long_only"
     )
     ptf.compute_weights()
@@ -73,7 +74,7 @@ def run():
     ptf_bench = portfolio.EqualWeightingScheme(
         returns=dm.returns,
         signals=bench.signals,
-        rebal_periods=22,
+        rebal_periods=rebal,
         portfolio_type="long_only"
     )
     ptf_bench.compute_weights()
@@ -107,7 +108,7 @@ def run():
         freq="d",
         percentiles=str((p_low, p_high)),
         industries="Cross_Industries",
-        rebal_freq="22 d"
+        rebal_freq=f"{rebal} d"
     )
     analyzer.compute_metrics()
 
