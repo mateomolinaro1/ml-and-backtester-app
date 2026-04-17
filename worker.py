@@ -40,6 +40,7 @@ logger = logging.getLogger(__name__)
 
 ROOT_DIR = config.ROOT_DIR
 CONFIG_PATH = ROOT_DIR / "config" / "run_pipeline_config.json"
+BACKTEST_CONFIG_PATH = ROOT_DIR / "config" / "backtest_config.json"
 
 BUCKET = os.getenv("AWS_BUCKET_NAME", "ml-and-backtester-app")
 REGION = os.getenv("AWS_DEFAULT_REGION", "eu-north-1")
@@ -152,6 +153,37 @@ def _run_pipeline(config: dict, job_id: str) -> None:
     logger.info("Job %s finished — status: %s (exit code %s)", job_id, status, process.returncode)
 
 
+def _run_backtest(config: dict, job_id: str) -> None:
+    logger.info("Job %s — launching BACKTEST...", job_id)
+
+    with open(BACKTEST_CONFIG_PATH, "w") as f:
+        json.dump(config, f, indent=2)
+
+    _flush_log(["Starting Backtest engine...\n"])
+    _write_status("running", job_id)
+
+    # On lance le nouveau script qu'on a créé à l'étape 1
+    process = subprocess.Popen(
+        [sys.executable, str(ROOT_DIR / "run_backtest.py")],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        cwd=str(ROOT_DIR),
+        env=os.environ.copy(),
+    )
+
+    log_lines: list[str] = []
+    for line in process.stdout:
+        print(line, end="", flush=True)
+        log_lines.append(line)
+        if len(log_lines) % LOG_FLUSH_EVERY == 0:
+            _flush_log(log_lines)
+    
+    process.wait()
+    _flush_log(log_lines)
+    _write_status("done" if process.returncode == 0 else "error", job_id)
+
+
 # ─── Main polling loop ────────────────────────────────────────────────────────
 
 def poll() -> None:
@@ -188,6 +220,8 @@ def poll() -> None:
 
             if body.get("action") == "run":
                 _run_pipeline(body["config"], body.get("job_id", "unknown"))
+            elif body.get("action") == "run_backtest":
+                _run_backtest(body["config"], body.get("job_id", "unknown"))    
             else:
                 logger.warning("Unknown action '%s' — skipping.", body.get("action"))
 

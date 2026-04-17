@@ -73,6 +73,7 @@ class S3PathManager:
         self.fmp_root = f"{self.base}/fmp/{self.method}"
         self.forecast_root = f"{self.base}/forecasting/{self.method}"
         self.alloc_root = f"{self.base}/dynamic_allocation/{self.method}"
+        self.backtest_root = f"{self.base}/backtest"
 
     @property
     def FMP_FIGURES(self) -> dict:
@@ -120,4 +121,11 @@ class S3PathManager:
             "oos_sign_accuracy": f"{self.forecast_root}/data/oos_sign_accuracy.parquet",
             "dynamic_alloc_cum_returns": f"{self.alloc_root}/data/dynamic_allocation_cum_returns.parquet",
             "dynamic_alloc_performance": f"{self.alloc_root}/data/dynamic_allocation_performance_table.parquet",
+        }
+    
+    @property
+    def BACKTEST_FIGURES(self) -> dict:
+        """Chemins vers les images générées par le backtester"""
+        return {
+            "Cumulative Performance": f"{self.backtest_root}/figures/cumulative_performance.png",
         }

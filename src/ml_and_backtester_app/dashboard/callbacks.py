@@ -179,6 +179,43 @@ def _dynamic_alloc_tab(paths: S3PathManager) -> html.Div:
     )
     return html.Div(rows)
 
+
+def _backtest_tab(paths: S3PathManager) -> html.Div:
+    # 1. On définit une config par défaut pour ton backtest
+    default_backtest_config = {
+        "strategy_name": "CSMOM",
+        "nb_period": 252,
+        "nb_period_to_exclude": 22,
+        "transaction_costs": 10,
+        "percentiles": [10, 90]
+    }
+    
+    return html.Div([
+        _section_header("Backtest Custom Strategy"),
+        dbc.Row([
+            # Colonne GAUCHE : Configuration JSON
+            dbc.Col([
+                html.Div("Backtest Parameters (JSON)", className="text-muted small mb-2"),
+                dcc.Textarea(
+                    id="backtest-config-textarea", 
+                    value=json.dumps(default_backtest_config, indent=2),
+                    style={"width": "100%", "height": "300px", "fontFamily": "monospace", "fontSize": "12px"}
+                ),
+                dbc.Button("Run Backtest", id="btn-run-backtest", color="primary", className="mt-3 w-100"),
+                html.Div(id="backtest-status-msg")
+            ], width=4),
+            
+            # Colonne DROITE : Affichage du PNG de performance
+            dbc.Col([
+                # On utilise ta fonction _png_card pour afficher le résultat
+                # Note: il faudra ajouter "backtest_perf" dans ton S3PathManager
+                _png_card("Cumulative Performance", paths.BACKTEST_FIGURES["Cumulative Performance"])
+            ], width=8),
+        ])
+    ])
+
+
+
 # ─── Config & Run tab ────────────────────────────────────────────────────────
 
 _STATUS_COLORS = {"idle": "secondary", "running": "warning", "done": "success", "error": "danger"}
@@ -234,6 +271,8 @@ def register(app: dash.Dash, paths: S3PathManager) -> None:
             return _dynamic_alloc_tab(paths)
         if active_tab == "tab-config":
             return _config_tab()
+        if active_tab == "tab-backtest":
+            return _backtest_tab(paths)
         return html.P("Select a tab above.")
 
 
@@ -286,3 +325,20 @@ def register(app: dash.Dash, paths: S3PathManager) -> None:
         output = get_output()
         suffix = f"\n\n[{msg}]"
         return (output + suffix) if output else suffix, _status_badge("idle")
+    
+    @app.callback(
+    Output("backtest-status-msg", "children"),
+    Input("btn-run-backtest", "n_clicks"),
+    State("backtest-config-textarea", "value"),
+    prevent_initial_call=True
+)
+    def on_run_backtest(n, config_str):
+        # Ici, tu appelles ton pipeline_runner mais avec une action spéciale
+        from ml_and_backtester_app.dashboard.pipeline_runner import start
+        
+        # On peut imaginer que ton runner accepte un paramètre pour savoir quoi lancer
+        ok, msg = start(config_str, task_type="backtest") 
+        
+        if ok:
+            return dbc.Alert("Backtest queued successfully!", color="success", className="mt-2")
+        return dbc.Alert(f"Error: {msg}", color="danger", className="mt-2")

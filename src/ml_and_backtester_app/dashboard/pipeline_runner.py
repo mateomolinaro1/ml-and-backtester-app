@@ -88,10 +88,11 @@ def get_output() -> str:
         return ""
 
 
-def start(config_json: str) -> tuple[bool, str]:
+# Modifie la signature de la fonction pour accepter task_type
+def start(config_json: str, task_type: str = "run") -> tuple[bool, str]:
     """
     Validate *config_json* and push a run-job to SQS.
-    worker.py will pick it up and execute the pipeline.
+    task_type can be 'run' (default) or 'backtest'.
     """
     if not JOBS_QUEUE_URL:
         return False, "SQS_JOBS_QUEUE_URL is not configured."
@@ -104,15 +105,24 @@ def start(config_json: str) -> tuple[bool, str]:
     if get_status() == "running":
         return False, "Pipeline is already running."
 
+    # --- LOGIQUE DYNAMIQUE ICI ---
+    # Si task_type est "backtest", on envoie "run_backtest", sinon on envoie "run"
+    action = "run_backtest" if task_type == "backtest" else "run"
+    
     job_id = str(uuid.uuid4())[:8]
-    message = json.dumps({"action": "run", "config": cfg, "job_id": job_id})
+    message = json.dumps({
+        "action": action, 
+        "config": cfg, 
+        "job_id": job_id
+    })
+    # -----------------------------
 
     try:
         _sqs().send_message(QueueUrl=JOBS_QUEUE_URL, MessageBody=message)
     except Exception as exc:
         return False, f"Could not send job to SQS: {exc}"
 
-    return True, f"Job {job_id} queued — waiting for the worker to pick it up."
+    return True, f"Task '{action}' (Job {job_id}) queued — waiting for the worker."
 
 
 def stop() -> str:

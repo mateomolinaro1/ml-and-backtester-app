@@ -39,6 +39,7 @@ def create_layout(paths: S3PathManager) -> html.Div:
             dbc.Tab(label="Forecasting", tab_id="tab-forecasting"),
             dbc.Tab(label="Dynamic Allocation", tab_id="tab-dynamic-alloc"),
             dbc.Tab(label="Config & Run", tab_id="tab-config"),
+            dbc.Tab(label="Backtest Engine", tab_id="tab-backtest"),
         ],
         id="tabs",
         active_tab="tab-config",
