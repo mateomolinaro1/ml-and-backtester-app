@@ -1,0 +1,17 @@
+name: ml-and-backtester-app
+
+python_env: python_env.yaml
+
+entry_points:
+  main:
+    parameters:
+      estimation_method: {type: string, default: "expanding"}
+    command: "python main.py"
+
+  train:
+    parameters:
+      estimation_method: {type: string, default: "expanding"}
+    command: "python main.py"
+
+  dashboard:
+    command: "uvicorn ml_and_backtester_app.dashboard.app:api --host 0.0.0.0 --port 8050"
