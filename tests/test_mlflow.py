@@ -8,6 +8,11 @@ from sklearn.linear_model import Lasso, LinearRegression
 from sklearn.metrics import mean_squared_error
 import mlflow
 import mlflow.sklearn
+from pathlib import Path
+
+# Forcer le même tracking URI que l'API (racine du projet)
+_ROOT = Path(__file__).resolve().parents[1]
+mlflow.set_tracking_uri(str(_ROOT / "mlruns"))
 
 # --- Données fictives ---
 np.random.seed(42)
@@ -57,5 +62,21 @@ for model_name, info in fake_results.items():
 
         print(f"   → {model_name}: OOS RMSE={info['oos_rmse']:.4f}, Sign accuracy={info['sign_accuracy']:.2%}")
 
-print("\nMLflow tracking OK !")
-print("Run in a new terminal: uv run mlflow ui")
+best_model_name = min(fake_results, key=lambda m: fake_results[m]["oos_rmse"])
+print(f"\n   Meilleur modèle : {best_model_name}")
+
+best = fake_results[best_model_name]
+with mlflow.start_run(run_name=f"registry_{best_model_name}"):
+    mlflow.log_param("best_model", best_model_name)
+    mlflow.log_metric("oos_rmse", best["oos_rmse"])
+    mlflow.log_metric("sign_accuracy", best["sign_accuracy"])
+    mlflow.sklearn.log_model(best["model"], name="model", registered_model_name="forecasting_best_model")
+
+client = mlflow.MlflowClient()
+latest = client.get_latest_versions("forecasting_best_model")[0]
+client.set_registered_model_alias("forecasting_best_model", "production", latest.version)
+print(f"   → '{best_model_name}' enregistré en production (version {latest.version})")
+
+print("\n✅ MLflow tracking + registry OK !")
+print("   uv run mlflow ui  →  http://localhost:5000")
+print("   uv run uvicorn ml_and_backtester_app.dashboard.app:api --port 8050  →  http://localhost:8050/docs")
