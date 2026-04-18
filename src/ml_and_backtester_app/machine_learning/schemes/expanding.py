@@ -274,8 +274,9 @@ class ExpandingWindowScheme(EstimationScheme):
         # -----------------------------
         # MLFLOW TRACKING
         # -----------------------------
-        mlflow.set_experiment("forecasting_expanding")
-        logger.info("Logging results to MLflow...")
+        mlflow.set_experiment("prévision_expanding")
+   
+        logger.info("Logging les résultats dans MLflow...")
 
         for model_name in rmse_results:
             last_hp_df = self.best_hyperparams_all_models_overtime[model_name].dropna(how="all")
@@ -296,12 +297,42 @@ class ExpandingWindowScheme(EstimationScheme):
                     try:
                         mlflow.sklearn.log_model(model_obj.model, name="model")
                     except Exception as e:
-                        logger.warning(f"Could not log sklearn model for {model_name}: {e}")
+                        logger.warning(f"Impossible de logguer le modèle sklearn pour {model_name}: {e}")
 
                 logger.info(
                     f"MLflow — {model_name}: OOS RMSE={rmse_results[model_name]:.4f}, "
                     f"Sign accuracy={float(accuracy_results[model_name]):.2%}"
                 )
+
+        # -----------------------------
+        # MLFLOW MODEL REGISTRY
+        # -----------------------------
+        best_model_name = min(rmse_results, key=rmse_results.get)
+        logger.info(f"Meilleur modèle : {best_model_name} (OOS RMSE={rmse_results[best_model_name]:.4f})")
+
+        best_model_obj = self._last_trained_models.get(best_model_name)
+        if best_model_obj is not None and hasattr(best_model_obj, "model"):
+            try:
+                with mlflow.start_run(run_name=f"registry_{best_model_name}"):
+                    mlflow.log_param("best_model", best_model_name)
+                    mlflow.log_metric("oos_rmse", rmse_results[best_model_name])
+                    mlflow.log_metric("sign_accuracy", float(accuracy_results[best_model_name]))
+                    mlflow.sklearn.log_model(
+                        best_model_obj.model,
+                        name="model",
+                        registered_model_name="forecasting_best_model"
+                    )
+
+                client = mlflow.MlflowClient()
+                latest = client.get_latest_versions("forecasting_best_model")[0]
+                client.set_registered_model_alias(
+                    name="forecasting_best_model",
+                    alias="production",
+                    version=latest.version
+                )
+                logger.info(f"Modèle '{best_model_name}' enregistré en production (version {latest.version})")
+            except Exception as e:
+                logger.warning(f"Model Registry non disponible, skipping: {e}")
 
         # --- ENVOI SUR S3 DANS LE BON DOSSIER ---
         # --- 5. ENVOI FINAL SUR S3 (VERSION COMPLÈTE POUR LE DASHBOARD) ---
