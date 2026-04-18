@@ -294,7 +294,7 @@ class ExpandingWindowScheme(EstimationScheme):
                 model_obj = self._last_trained_models.get(model_name)
                 if model_obj is not None and hasattr(model_obj, "model") and hasattr(model_obj.model, "predict"):
                     try:
-                        mlflow.sklearn.log_model(model_obj.model, artifact_path="model")
+                        mlflow.sklearn.log_model(model_obj.model, name="model")
                     except Exception as e:
                         logger.warning(f"Could not log sklearn model for {model_name}: {e}")
 
