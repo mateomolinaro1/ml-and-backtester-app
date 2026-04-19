@@ -1,6 +1,5 @@
 import pandas as pd
 from abc import ABC, abstractmethod
-from src.ml_and_backtester_app.utils.s3_utils import s3Utils
 from better_aws import AWS
 # --- CONFIGURATION ET LOGIQUE DE BASE ---
 
