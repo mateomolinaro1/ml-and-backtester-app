@@ -48,6 +48,9 @@ line-length = 120
 [tool.ruff]
 line-length = 120
 
+[tool.ruff.lint.per-file-ignores]
+"src/ml_and_backtester_app/dashboard/app.py" = ["E402"]
+
 [tool.pylint.format]
 max-line-length = 120
 
