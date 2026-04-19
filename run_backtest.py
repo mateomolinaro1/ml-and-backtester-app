@@ -47,7 +47,8 @@ def run():
             "df": dm.cleaned_data,
             "nb_period": bt_params.get("nb_period", 252),
             "nb_period_to_exclude": rebal,
-            "exclude_last_period": True
+            "exclude_last_period": True,
+            "price_or_return": "return"
         }
     )
     strategy.compute_signals_values()

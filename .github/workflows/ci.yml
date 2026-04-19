@@ -40,3 +40,9 @@ jobs:
           context: .
           push: true
           tags: yasmxne/ml-and-backtester-app:latest
+
+      - name: Trigger Render deploy
+        if: github.event_name == 'push'
+        run: curl -X POST "$RENDER_DEPLOY_HOOK_URL"
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
