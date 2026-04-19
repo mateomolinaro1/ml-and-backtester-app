@@ -152,6 +152,7 @@ class Config:
 
             # Forcasting
             self.load_or_train_models = config.get("FORECASTING").get("LOAD_OR_TRAIN_MODELS")
+            self.data_frequency = config.get("FORECASTING").get("DATA_FREQUENCY", "monthly").lower()
             self.estimation_method = config.get("FORECASTING").get("ESTIMATION_METHOD", "expanding")
             self.rolling_window_size = config.get("FORECASTING").get("ROLLING_WINDOW_SIZE", 252) # 252 par défaut si oublié
             self.forecast_horizon = config.get("FORECASTING").get("FORECAST_HORIZON")
