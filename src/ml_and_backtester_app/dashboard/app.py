@@ -26,7 +26,7 @@ load_dotenv()
 config = Config()
 paths = S3PathManager(config)
 _ROOT = config.ROOT_DIR
-mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", str(_ROOT / "mlruns")))
+mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", f"sqlite:///{_ROOT / 'mlflow.db'}"))
 
 import pandas as pd # noqa: E402
 import dash # noqa: E402

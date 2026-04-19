@@ -12,12 +12,16 @@ import mlflow
 import mlflow.sklearn
 from ml_and_backtester_app.machine_learning.models import Model
 from ml_and_backtester_app.machine_learning.features_selection import PCAFactorExtractor
+from pathlib import Path
 
 import os
 
 logger = logging.getLogger(__name__)
 
-tmp_dir = os.path.join(os.getcwd(), "tmp") 
+_ROOT = Path(__file__).resolve().parents[4]
+mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", f"sqlite:///{_ROOT / 'mlflow.db'}"))
+
+tmp_dir = os.path.join(os.getcwd(), "tmp")
 os.makedirs(tmp_dir, exist_ok=True)
 logger.info(f"Dossier temporaire configuré : {tmp_dir}")
 

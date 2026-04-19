@@ -12,7 +12,7 @@ from pathlib import Path
 
 # Forcer le même tracking URI que l'API (racine du projet)
 _ROOT = Path(__file__).resolve().parents[1]
-mlflow.set_tracking_uri(str(_ROOT / "mlruns"))
+mlflow.set_tracking_uri(f"sqlite:///{_ROOT / 'mlflow.db'}")
 
 # --- Données fictives ---
 np.random.seed(42)
