@@ -124,4 +124,4 @@ api.mount("/", WSGIMiddleware(flask_server))
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("dashboard.app:api", host="0.0.0.0", port=8050, reload=False)
+    uvicorn.run("ml_and_backtester_app.dashboard.app:api", host="0.0.0.0", port=8050, reload=False)

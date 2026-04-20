@@ -1,6 +1,6 @@
 {
   "strategy_name": "CSMOM",
-  "nb_period": 252,
+  "nb_period": 121,
   "nb_period_to_exclude": 22,
   "transaction_costs": 10,
   "percentiles": [
