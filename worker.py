@@ -23,7 +23,6 @@ import os
 import subprocess
 import sys
 import time
-from pathlib import Path
 
 import boto3
 from dotenv import load_dotenv

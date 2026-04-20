@@ -1,11 +1,9 @@
-from multiprocessing.managers import Value
-
 import polars as pl
 from typing import Union
 import pandas as pd
 import numpy as np
 from abc import ABC, abstractmethod
-from typing import Union
+
 
 class CreatePortfolio:
     """Class to compute portfolio level returns given assets' weights and returns"""
@@ -42,7 +40,7 @@ class CreatePortfolio:
             if return_bool:
                 return self.weights
 
-        if not self.weights.schema["date"] in (pl.Date, pl.Datetime):
+        if self.weights.schema["date"] not in (pl.Date, pl.Datetime):
             raise ValueError("weights dataframe must have a 'date' column of type Date or Datetime")
 
         # If rebalancing period specified, we must compute weights accounting for drift

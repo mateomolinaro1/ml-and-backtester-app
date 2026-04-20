@@ -1,6 +1,5 @@
 import pandas as pd
 from abc import ABC, abstractmethod
-from src.ml_and_backtester_app.utils.s3_utils import s3Utils
 from better_aws import AWS
 # --- CONFIGURATION ET LOGIQUE DE BASE ---
 
@@ -65,7 +64,7 @@ class FredMD(DataSource):
             df = pd.read_csv(url, storage_options={'User-Agent': 'Mozilla/5.0'})
             print(f"Succès : Données Fred-MD de {current_month} récupérées.")
             return self.prepare_dates(df)
-        except Exception as e:
+        except Exception :
             # On log l'info, mais on ne lève pas d'erreur 
             print(f"Info : Le fichier {current_month} n'est pas encore en ligne sur Fred-MD. (Attendu à : {url})")
             return None
