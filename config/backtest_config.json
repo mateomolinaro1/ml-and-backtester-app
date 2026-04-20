@@ -1,8 +1,11 @@
 {
-  "strategy_name": "CSMOM",
-  "nb_period": 121,
-  "nb_period_to_exclude": 22,
+  "ratio_name": "cash_conversion",
+  "ascending": false,
+  "start_date": "2010-01-01",
   "transaction_costs": 10,
+  "nb_period_to_exclude": 22,
+  "mom_skip": 22,
+  "strategy_name": "STRAT_CASH_CONVERSION",
   "percentiles": [
     10,
     90

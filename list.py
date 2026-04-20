@@ -1,41 +1,28 @@
-import boto3
 import os
 from dotenv import load_dotenv
+from ml_and_backtester_app.utils.config import Config
+from ml_and_backtester_app.data.data_manager import DataManager
 
+# 1. Charger les clés AWS depuis le fichier .env
 load_dotenv()
 
-s3 = boto3.client(
-    's3',
-    aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
-    aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
-    region_name=os.getenv("AWS_DEFAULT_REGION", "eu-north-1")
-)
+# 2. Initialiser la config et le manager
+config = Config()
+dm = DataManager(config=config)
 
-bucket_name = "ml-and-backtester-app"
-prefix_to_search = "outputs/"  # On définit le dossier cible
+# 3. Charger les colonnes du fichier S3
+# On utilise le s3_object_name défini dans tes scripts précédents
+# Change juste cette ligne dans ton script précédent
+s3_key = "data/wrds_funda_gross_query.parquet"
 
-print(f"--- Liste des fichiers dans le dossier : {prefix_to_search} ---")
+# Relance le script pour voir la liste des colonnes
 
-paginator = s3.get_paginator('list_objects_v2')
+print(f"Connexion à S3 (Bucket: {config.aws_bucket_name})...")
 
-# On utilise 'Prefix' pour dire à S3 de ne regarder que ce dossier
-operation_parameters = {'Bucket': bucket_name, 'Prefix': prefix_to_search}
-
-file_found = False
-
-for page in paginator.paginate(**operation_parameters):
-    if 'Contents' in page:
-        for obj in page['Contents']:
-            file_path = obj['Key']
-            
-            # On ignore l'objet qui représente le dossier lui-même
-            if file_path == prefix_to_search:
-                continue
-            
-            file_found = True
-            # Taille en KB pour que ce soit lisible
-            size = round(obj['Size'] / 1024, 2)
-            print(f"📄 {file_path} ({size} KB)")
-
-if not file_found:
-    print(f"Aucun fichier trouvé dans le dossier '{prefix_to_search}'.")
+try:
+    # On charge juste les métadonnées ou les premières lignes pour aller vite
+    df = dm.aws.s3.load(key=s3_key)
+    print("\n--- LISTE DES COLONNES DISPONIBLES ---")
+    print(df.columns.tolist())
+except Exception as e:
+    print(f"Erreur lors de la lecture du fichier : {e}")
