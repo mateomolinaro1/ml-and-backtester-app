@@ -1,8 +1,10 @@
 {
-  "strategy_name": "CSMOM",
-  "nb_period": 252,
-  "nb_period_to_exclude": 22,
+  "ratio_name": "capei",
+  "ascending": false,
+  "start_date": "2010-01-01",
   "transaction_costs": 10,
+  "nb_period_to_exclude": 22,
+  "strategy_name": "STRAT_CAPEI",
   "percentiles": [
     10,
     90

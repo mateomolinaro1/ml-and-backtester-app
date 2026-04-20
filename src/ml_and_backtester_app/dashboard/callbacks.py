@@ -181,35 +181,85 @@ def _dynamic_alloc_tab(paths: S3PathManager) -> html.Div:
 
 
 def _backtest_tab(paths: S3PathManager) -> html.Div:
-    # 1. On définit une config par défaut pour ton backtest
-    default_backtest_config = {
-        "strategy_name": "CSMOM",
-        "nb_period": 252,
-        "nb_period_to_exclude": 22,
-        "transaction_costs": 10,
-        "percentiles": [10, 90]
-    }
-    
+    # Ta liste de ratios financiers
+    funda_cols = [
+        'capei', 'be', 'bm', 'evm', 'pe_op_basic', 'pe_op_dil', 'pe_exi', 'pe_inc', 
+        'ps', 'pcf', 'dpr', 'npm', 'opmbd', 'opmad', 'gpm', 'ptpm', 'cfm', 'roa', 
+        'roe', 'roce', 'efftax', 'aftret_eq', 'aftret_invcapx', 'aftret_equity', 
+        'pretret_noa', 'pretret_earnat', 'gprof', 'equity_invcap', 'debt_invcap', 
+        'totdebt_invcap', 'capital_ratio', 'int_debt', 'int_totdebt', 'cash_lt', 
+        'invt_act', 'rect_act', 'debt_at', 'debt_ebitda', 'short_debt', 'curr_debt', 
+        'lt_debt', 'profit_lct', 'ocf_lct', 'cash_debt', 'fcf_ocf', 'lt_ppent', 
+        'dltt_be', 'debt_assets', 'debt_capital', 'de_ratio', 'intcov', 'intcov_ratio', 
+        'cash_ratio', 'quick_ratio', 'curr_ratio', 'cash_conversion', 'inv_turn', 
+        'at_turn', 'rect_turn', 'pay_turn', 'sale_invcap', 'sale_equity', 'sale_nwc', 
+        'rd_sale', 'adv_sale', 'staff_sale', 'accrual', 'ret_crsp', 'mktcap', 
+        'price', 'ptb', 'peg_trailing', 'divyield'
+    ]
+
+    # Construction des options (Momentum + Ratios)
+    options = [{"label": " Momentum (Technical)", "value": "Momentum"}]
+    options += [{"label": f" {c.upper()}", "value": c} for c in sorted(funda_cols)]
+
     return html.Div([
-        _section_header("Backtest Custom Strategy"),
+        _section_header("Strategy Backtester"),
         dbc.Row([
-            # Colonne GAUCHE : Configuration JSON
+            # Panneau de contrôle (4 colonnes de large)
             dbc.Col([
-                html.Div("Backtest Parameters (JSON)", className="text-muted small mb-2"),
-                dcc.Textarea(
-                    id="backtest-config-textarea", 
-                    value=json.dumps(default_backtest_config, indent=2),
-                    style={"width": "100%", "height": "300px", "fontFamily": "monospace", "fontSize": "12px"}
-                ),
-                dbc.Button("Run Backtest", id="btn-run-backtest", color="primary", className="mt-3 w-100"),
-                html.Div(id="backtest-status-msg")
+                dbc.Card([
+                    dbc.CardHeader("Parameters", className="fw-bold text-uppercase small"),
+                    dbc.CardBody([
+                        # 1. Sélection du facteur
+                        html.Label("Factor / Signal", className="small mb-1"),
+                        dcc.Dropdown(
+                            id="bt-ratio-selector", 
+                            options=options, 
+                            value="Momentum",
+                            className="mb-3"
+                        ),
+                        
+                        # 2. Direction de la stratégie
+                        html.Label("Strategy Logic", className="small mb-1"),
+                        dbc.RadioItems(
+                            id="bt-direction",
+                            options=[
+                                {"label": "Buy High Values (Growth/Mom)", "value": False},
+                                {"label": "Buy Low Values (Value/Cheap)", "value": True},
+                            ],
+                            value=False,
+                            className="mb-3 small",
+                        ),
+
+                        # 3. Date de début
+                        html.Label("Start Date", className="small mb-1 d-block"),
+                        dcc.DatePickerSingle(
+                            id="bt-date-picker",
+                            date="2010-01-01",
+                            display_format="YYYY-MM-DD",
+                            className="mb-3"
+                        ),
+
+                        # 4. Coûts et Rebalancement
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label("Costs (bps)", className="small"),
+                                dbc.Input(id="bt-costs", type="number", value=10, size="sm"),
+                            ]),
+                            dbc.Col([
+                                html.Label("Rebal. (days)", className="small"),
+                                dbc.Input(id="bt-rebal", type="number", value=22, size="sm"),
+                            ]),
+                        ], className="mb-3"),
+
+                        dbc.Button("Run Backtest", id="btn-run-backtest", color="primary", className="w-100 mt-2 shadow-sm"),
+                    ])
+                ], className="border-0 shadow-sm"),
+                html.Div(id="backtest-status-msg", className="mt-3")
             ], width=4),
             
-            # Colonne DROITE : Affichage du PNG de performance
+            # Affichage du résultat (8 colonnes de large)
             dbc.Col([
-                # On utilise ta fonction _png_card pour afficher le résultat
-                # Note: il faudra ajouter "backtest_perf" dans ton S3PathManager
-                _png_card("Cumulative Performance", paths.BACKTEST_FIGURES["Cumulative Performance"])
+                _png_card("Strategy Performance", paths.BACKTEST_FIGURES["Cumulative Performance"])
             ], width=8),
         ])
     ])
@@ -327,18 +377,38 @@ def register(app: dash.Dash, paths: S3PathManager) -> None:
         return (output + suffix) if output else suffix, _status_badge("idle")
     
     @app.callback(
-    Output("backtest-status-msg", "children"),
-    Input("btn-run-backtest", "n_clicks"),
-    State("backtest-config-textarea", "value"),
-    prevent_initial_call=True
-)
-    def on_run_backtest(n, config_str):
-        # Ici, tu appelles ton pipeline_runner mais avec une action spéciale
+        Output("backtest-status-msg", "children"),
+        Input("btn-run-backtest", "n_clicks"),
+        State("bt-ratio-selector", "value"),
+        State("bt-direction", "value"),
+        State("bt-date-picker", "date"),
+        State("bt-costs", "value"),
+        State("bt-rebal", "value"),
+        prevent_initial_call=True
+    )
+    def on_run_backtest(n, ratio, direction, start_date, costs, rebal):
         from ml_and_backtester_app.dashboard.pipeline_runner import start
         
-        # On peut imaginer que ton runner accepte un paramètre pour savoir quoi lancer
-        ok, msg = start(config_str, task_type="backtest") 
+        # On construit le dictionnaire de config dynamiquement
+        # C'est ce que ton run_backtest.py va recevoir via SQS
+        config_payload = {
+            "ratio_name": ratio,
+            "ascending": direction,  # True = Buy Low, False = Buy High
+            "start_date": start_date,
+            "transaction_costs": costs,
+            "nb_period_to_exclude": rebal,
+            "strategy_name": f"STRAT_{ratio.upper()}",
+            "percentiles": [10, 90]
+        }
+        
+        # On envoie ça au Worker
+        ok, msg = start(json.dumps(config_payload), task_type="backtest") 
         
         if ok:
-            return dbc.Alert("Backtest queued successfully!", color="success", className="mt-2")
-        return dbc.Alert(f"Error: {msg}", color="danger", className="mt-2")
+            # Petit message sympa pour l'utilisateur
+            return dbc.Alert(
+                f"Backtest for {ratio} launched! Check the 'Config & Run' tab for logs.", 
+                color="success", 
+                className="py-2 small"
+            )
+        return dbc.Alert(f"Error: {msg}", color="danger", className="py-2 small")
