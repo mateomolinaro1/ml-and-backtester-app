@@ -54,8 +54,12 @@ class FeaturesEngineering:
 
     def _build_lagged_features(self):
         lagged_vars = {}
+        if self.config.data_frequency == "daily":
+            lags = [1, 5, 12, 22, 63, 126, 252]
+        else : 
+            lags = [1, 3, 6, 12]
         for col in self.transformed_fred_data.columns:
-            for lag in self.config.lags:
+            for lag in lags:
                 logger.info(f"Building lagged feature: {col}_lag{lag}")
                 lagged_vars[f"{col}_lag{lag}"] = self.transformed_fred_data[col].shift(lag)
         lagged_df = pd.DataFrame(lagged_vars)
@@ -83,6 +87,7 @@ class FeaturesEngineering:
             ,:]
 
     def _split_y_x(self):
+            # la variable d'intérêt 
         self.y = self.transformed_fred_data[[self.config.macro_var_name]].copy().shift(-self.config.forecast_horizon)
         self.x = self.transformed_fred_data.drop(columns=[self.config.macro_var_name]).copy()
         # Avoid overloading memory

@@ -151,6 +151,7 @@ class Config:
             self.lags = config.get("FEATURE_ENGINEERING").get("LAGS")
 
             # Forcasting
+            self.datasource = config.get("FORECASTING").get("DATASOURCE")
             self.load_or_train_models = config.get("FORECASTING").get("LOAD_OR_TRAIN_MODELS")
             self.data_frequency = config.get("FORECASTING").get("DATA_FREQUENCY", "monthly").lower()
             self.estimation_method = config.get("FORECASTING").get("ESTIMATION_METHOD", "expanding")
