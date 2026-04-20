@@ -68,7 +68,9 @@ class Config:
         self.lags: List[int]|list|None = None
 
         # Forecasting
+        self.datasource: str|None = None
         self.load_or_train_models: str | None = None  # "load" or "train"
+        self.data_frequency: str|None = None
         self.estimation_method: str | None = None
         self.rolling_window_size: int | None = None
         self.forecast_horizon: int|None = None
@@ -151,7 +153,9 @@ class Config:
             self.lags = config.get("FEATURE_ENGINEERING").get("LAGS")
 
             # Forcasting
+            self.datasource = config.get("FORECASTING").get("DATASOURCE")
             self.load_or_train_models = config.get("FORECASTING").get("LOAD_OR_TRAIN_MODELS")
+            self.data_frequency = config.get("FORECASTING").get("DATA_FREQUENCY", "monthly").lower()
             self.estimation_method = config.get("FORECASTING").get("ESTIMATION_METHOD", "expanding")
             self.rolling_window_size = config.get("FORECASTING").get("ROLLING_WINDOW_SIZE", 252) # 252 par défaut si oublié
             self.forecast_horizon = config.get("FORECASTING").get("FORECAST_HORIZON")

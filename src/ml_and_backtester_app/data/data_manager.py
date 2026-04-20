@@ -35,6 +35,7 @@ class DataManager:
         self.returns_data: pd.DataFrame | None = None
         self.code_transfo: Dict[str, int | float] | None = None
         self.aws: AWS | None = None
+        self.epu_data: pd.DataFrame | None = None  # Optional, only if EPU is loaded
 
         self.load()
 
@@ -65,28 +66,34 @@ class DataManager:
         )
 
     def _fetch_from_s3(self) -> dict[str, pd.DataFrame]:
-        """
-        Fetch raw data from S3.
-
-        :return: Dictionary containing raw dataframes loaded from S3.
-        """
-        return {
+        # Chargement des bases communes
+        data_to_load = {
             "fred": self.aws.s3.load(key=self.config.fred_path),
             "codes": self.aws.s3.load(key=self.config.codes_path),
             "prices": self.aws.s3.load(key=self.config.prices_path),
         }
 
-    def _process(self, raw: dict[str, pd.DataFrame]) -> None:
-        """
-        Process raw data loaded from S3.
+        # Chargement dynamique de l'EPU
+        source = self.config.datasource
+        if source == "monthly_epu":
+            # Remplace par le bon attribut de ta config ou une clé JSON
+            data_to_load["epu"] = self.aws.s3.load(key="data/monthly_epu_index.parquet")
+        elif source == "cat_epu":
+            data_to_load["epu"] = self.aws.s3.load(key="data/US_monthly_categorical_epu_indices.parquet")
+        elif source == "daily_epu":
+            # Ici on utilise ton attribut daily_macro_path si c'est là que tu stockes le daily EPU
+            data_to_load["epu"] = self.aws.s3.load(key="data/US_daily_epu_index.parquet")
+            
+        return data_to_load
 
-        :param raw: Dictionary containing the raw dataframes.
-        """
-        # self.code_transfo = self._extract_fred_transform_codes(raw["fred"])
+    def _process(self, raw: dict[str, pd.DataFrame]) -> None:
         self.code_transfo = raw["codes"]
-        # self.fred_data = self._clean_fred(raw["fred"])
         self.fred_data = raw["fred"]
         self.returns_data = raw["prices"]
+        
+        # Stockage de l'EPU si présent
+        if "epu" in raw:
+            self.epu_data = raw["epu"]
 
     # ---------- FRED-specific logic ---------- #
     @staticmethod

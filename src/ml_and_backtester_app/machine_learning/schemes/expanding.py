@@ -32,265 +32,162 @@ class ExpandingWindowScheme(EstimationScheme):
             self._put_in_attributes(loaded_obj=loaded_obj)
             logger.info("Models and results loaded from S3.")
             return
-        elif self.config.load_or_train_models == "train":
-            pass
-        else:
-            raise ValueError(
-                "config.load_or_train_models must be either 'load' or 'train'"
-            )
+        elif self.config.load_or_train_models != "train":
+            raise ValueError("config.load_or_train_models must be either 'load' or 'train'")
 
-        logger.info("Starting Expanding Window Estimation Scheme...")
-        # -----------------------------
+        logger.info("Starting Expanding Window Estimation Scheme (Daily-Ready)...")
+
+        # --- LOGIQUE DE FRÉQUENCE ---
+        data_freq = getattr(self.config, "data_frequency", "monthly").lower()
+        step_size = getattr(self.config, "retrain_step", 22) if data_freq == "daily" else 1
+        self.active_bundles = {} 
+
         # Hyperparams combinations
-        # -----------------------------
         hyperparams_all_combinations = self.build_hyperparams_combinations(
             hyperparameters_grid=hyperparams_grid
         )
 
-        # -----------------------------
         # STORE BETAS OVER TIME (linear only)
-        # -----------------------------
-        linear_models = []
-        for model_name, model in models.items():
-            if model_name in ["ridge","lasso","elastic_net","ols",
-                              "ridge_pca","lasso_pca","elastic_net_pca","ols_pca"]:
-                linear_models.append(model_name)
-
-        columns_list = ["intercept"] + list(
-                        self.data.drop(columns=[self.config.macro_var_name]).columns
-                    )
+        linear_models = [m for m in models if any(x in m for x in ["ridge","lasso","elastic_net","ols"])]
+        columns_list = ["intercept"] + list(self.data.drop(columns=[self.config.macro_var_name]).columns)
+        
         self.best_params_all_models_overtime = {
-            m: (
-                pd.DataFrame(
-                    index=self.date_range,
-                    columns=columns_list,
-                    dtype=float,
-                )
-                if m in linear_models
-                else None
-            )
-            for m in models
+            m: pd.DataFrame(index=self.date_range, columns=columns_list, dtype=float) 
+            if m in linear_models else None for m in models
         }
-        # Add pca models if needed
-        if self.config.with_pca:
-            columns_list = ["intercept"] + [f"factor_{i + 1}" for i in range(self.config.nb_pca_components)]
-            for model_name, _ in models.items():
-                if model_name in ["ridge_pca","lasso_pca","elastic_net_pca","ols_pca"]:
-                    self.best_params_all_models_overtime[model_name] = pd.DataFrame(
-                        index=self.date_range,
-                        columns=columns_list,
-                        dtype=float,
-                    )
-    
 
-        # -----------------------------
+        if self.config.with_pca:
+            pca_cols = ["intercept"] + [f"factor_{i + 1}" for i in range(self.config.nb_pca_components)]
+            for model_name in self.best_params_all_models_overtime:
+                if "_pca" in model_name:
+                    self.best_params_all_models_overtime[model_name] = pd.DataFrame(index=self.date_range, columns=pca_cols, dtype=float)
+
         # STORAGE
-        # -----------------------------
-        self.oos_predictions = {m: pd.DataFrame(
-            index=self.date_range,
-            data=np.nan,
-            columns=[self.config.macro_var_name]
-        ) for m in models}
-        self.best_score_all_models_overtime = pd.DataFrame(
-            index=self.date_range,
-            columns=list(models.keys()),
-        )
+        self.oos_predictions = {m: pd.DataFrame(index=self.date_range, data=np.nan, columns=[self.config.macro_var_name]) for m in models}
+        self.oos_true = pd.DataFrame(index=self.date_range, columns=[self.config.macro_var_name], dtype=float)
+        self.best_score_all_models_overtime = pd.DataFrame(index=self.date_range, columns=list(models.keys()))
         self.best_hyperparams_all_models_overtime = {
-            m: pd.DataFrame(
-                index=self.date_range,
-                columns=list(hyperparams_all_combinations[m][0].keys()),
-            )
-            for m in models
+            m: pd.DataFrame(index=self.date_range, columns=list(hyperparams_all_combinations[m][0].keys())) for m in models
         }
 
         # -----------------------------
         # WALK-FORWARD LOOP
         # -----------------------------
-        start_idx = (
-            self.min_nb_periods_required
-            + self.validation_window
-            + self.forecast_horizon
-        )
+        start_idx = self.min_nb_periods_required + self.validation_window + self.forecast_horizon
 
         for t in range(start_idx, len(self.date_range) - self.forecast_horizon):
             date_t = self.date_range[t]
-            logger.info(
-                f"Training models for date {date_t} "
-                f"({t}/{len(self.date_range) - self.forecast_horizon - 1})"
-            )
-
             t0 = time.time()
 
-            train_data, val_data, val_end = self._get_train_validation_split(t)
-            X_train, y_train = self._split_xy(train_data)
+            # --- BLOC ENTRAÎNEMENT (Seulement au pas défini) ---
+            if (t - start_idx) % step_size == 0:
+                logger.info(f"### [REFIT] Training at {date_t} ###")
+                train_data, val_data, val_end = self._get_train_validation_split(t)
+                X_train_raw, y_train = self._split_xy(train_data)
 
-            for model_name, ModelClass in models.items():
-                logger.info(f"Model: {model_name}")
+                for model_name, ModelClass in models.items():
+                    X_train_run = X_train_raw
+                    val_data_run = val_data
+                    pca_extractor = None
 
-                # Apply PCA if needed
-                if model_name.endswith("_pca"):
-                    pca_extractor = PCAFactorExtractor(
-                        n_factors=self.config.nb_pca_components
-                    )
-                    X_train = pca_extractor.fit_transform(X_train)
-                    val_x = val_data.drop(columns=[self.config.macro_var_name])
-                    val_x = pca_extractor.fit_transform(val_x)
-                    val_data = pd.concat([val_x, val_data[[self.config.macro_var_name]]], axis=1)
+                    if model_name.endswith("_pca"):
+                        pca_extractor = PCAFactorExtractor(n_factors=self.config.nb_pca_components)
+                        X_train_run = pca_extractor.fit_transform(X_train_raw)
+                        val_x, val_y = self._split_xy(val_data)
+                        val_x_pca = pca_extractor.transform(val_x)
+                        val_data_run = pd.concat([val_x_pca, val_y], axis=1)
 
-                best_score = -np.inf
-                best_hyperparams = None
+                    # Hyperparameter Search
+                    best_score, best_hyperparams = -np.inf, None
+                    for hp in hyperparams_all_combinations[model_name]:
+                        model_eval = ModelClass(**hp)
+                        model_eval.fit(X_train_run, y_train)
+                        scores = []
+                        for d in val_data_run.index.unique():
+                            v_d = val_data_run[val_data_run.index == d]
+                            X_v, y_v = self._split_xy(v_d)
+                            if len(y_v) > 0:
+                                scores.append(np.sqrt(mean_squared_error(y_v, model_eval.predict(X_v))))
+                        curr_score = np.mean(scores) if scores else -np.inf
+                        if curr_score > best_score:
+                            best_score, best_hyperparams = curr_score, hp
 
-                # -----------------------------
-                # HYPERPARAMETER SEARCH
-                # -----------------------------
-                def evaluate(hyperparams:dict):
-                    model = ModelClass(**hyperparams)
-                    model.fit(X_train, y_train)
+                    # Final Train (Expanding)
+                    full_train = self.data[self.data.index <= val_end]
+                    X_full, y_full = self._split_xy(full_train)
+                    if pca_extractor:
+                        X_full = pca_extractor.fit_transform(X_full)
 
-                    ICs = []
-                    for d in np.sort(val_data.index.unique()):
-                        val_d = val_data[val_data.index == d]
-                        X_val, y_val = self._split_xy(val_d)
+                    model_final = ModelClass(**best_hyperparams)
+                    model_final.fit(X_full, y_full)
 
-                        if len(y_val) <= 0:
-                            continue
+                    # MISE EN CACHE DU MODÈLE ACTIF
+                    self.active_bundles[model_name] = {
+                        "model": model_final,
+                        "pca": pca_extractor,
+                        "cols": X_full.columns
+                    }
 
-                        y_hat = model.predict(X_val)
-                        ic = np.sqrt(mean_squared_error(y_val, y_hat))
-                        if not np.isnan(ic):
-                            ICs.append(ic)
-
-                    if not ICs:
-                        return None
-
-                    return np.mean(ICs), hyperparams
-
-                # =========================
-                # PARALLEL GRID SEARCH
-                # =========================
-                results = Parallel(n_jobs=1)(
-                    delayed(evaluate)(hp)
-                    for hp in hyperparams_all_combinations[model_name]
-                )
-
-                for res in results:
-                    if res is None:
-                        continue
-                    score, hp = res
-                    if score > best_score:
-                        best_score = score
-                        best_hyperparams = hp
-
-                # -----------------------------
-                # STORE VALIDATION RESULTS
-                # -----------------------------
-                self.best_score_all_models_overtime.loc[date_t, model_name] = best_score
-                if best_hyperparams is not None:
+                    # Storage et Upload S3 individuel
+                    self.best_score_all_models_overtime.loc[date_t, model_name] = best_score
                     for k, v in best_hyperparams.items():
                         self.best_hyperparams_all_models_overtime[model_name].loc[date_t, k] = v
+                    
+                    model_filename = f"expanding_{model_name}_{date_t.strftime('%Y-%m-%d')}.pkl"
+                    local_path = os.path.join(tmp_dir, model_filename)
+                    joblib.dump(model_final, local_path)
+                    self.dm.aws.s3.upload(local_path, key=f"models/expanding/{model_name}/{model_filename}")
+                    if os.path.exists(local_path): os.remove(local_path)
 
-                # -----------------------------
-                # FINAL TRAIN
-                # -----------------------------
-                full_train = self.data[self.data.index <= val_end]
-                X_full, y_full = self._split_xy(full_train)
-                if model_name.endswith("_pca"):
-                    X_full = pca_extractor.fit_transform(X_full)
+            # --- BLOC PRÉDICTION (S'exécute chaque jour t) ---
+            test_df = self.data[self.data.index == date_t]
+            X_test_raw, y_test = self._split_xy(test_df)
+            self.oos_true.loc[date_t, self.config.macro_var_name] = float(np.ravel(y_test.values)[0])
 
-                model_final = ModelClass(**best_hyperparams)
-                model_final.fit(X_full, y_full)
+            for model_name in models.keys():
+                if model_name in self.active_bundles:
+                    bundle = self.active_bundles[model_name]
+                    m_obj, p_obj = bundle["model"], bundle["pca"]
 
+                    X_test_run = p_obj.transform(X_test_raw) if p_obj else X_test_raw
+                    y_hat = m_obj.predict(X_test_run)
 
-                model_filename = f"{model_name}_{date_t.strftime('%Y-%m-%d')}.pkl"
-                local_path = os.path.join(tmp_dir, model_filename)
-                joblib.dump(model_final, local_path)
-                s3_key = f"models/expanding/{model_name}/{model_filename}"
-                self.dm.aws.s3.upload(local_path, key=s3_key)
-                os.remove(local_path) # Supprime le fichier local après l'envoi réussi
+                    self.oos_predictions[model_name].loc[date_t, self.config.macro_var_name] = float(np.ravel(y_hat)[0])
 
-                test_date = self.date_range[t]
-                test_df = self.data[self.data.index == test_date]
-                X_test, y_test = self._split_xy(test_df)
-                if model_name.endswith("_pca"):
-                    X_test = pca_extractor.transform(X_test)
+                    if model_name in linear_models:
+                        self.best_params_all_models_overtime[model_name].loc[date_t, "intercept"] = (
+                            m_obj.model.intercept_ if hasattr(m_obj.model, "intercept_") else np.nan
+                        )
+                        self.best_params_all_models_overtime[model_name].loc[date_t, bundle["cols"]] = m_obj.model.coef_
 
-                y_hat = model_final.predict(X_test)
-
-                self.oos_predictions[model_name].loc[test_date, self.config.macro_var_name] = float(np.ravel(y_hat)[0])
-                self.oos_true.loc[test_date, self.config.macro_var_name] = float(np.ravel(y_test.values)[0])
-
-                logger.info(f"{model_name} done in {round((time.time() - t0) / 60, 3)} min")
-
-                # -----------------------------
-                # STORE COEFFICIENTS (linear models only)
-                # -----------------------------
-                if model_name in linear_models:
-                    self.best_params_all_models_overtime[model_name].loc[date_t, "intercept"] = (
-                        model_final.model.intercept_
-                        if hasattr(model_final.model, "intercept_")
-                        else np.nan
-                    )
-
-                    self.best_params_all_models_overtime[model_name].loc[
-                        date_t,
-                        X_train.columns
-                    ] = model_final.model.coef_
-
-                logger.info(
-                    f"{model_name} done in "
-                    f"{round((time.time() - t0) / 60, 3)} min"
-                )
-
-        logger.info("Calcul des performances globales...")
-
+        # ---------------------------------------------------------
+        # FINAL ANALYTICS & S3 UPLOAD (Écriture en dur à la fin du run)
+        # ---------------------------------------------------------
+        logger.info("Calcul des performances globales et upload final...")
         rmse_results = {}
         accuracy_results = {}
 
-        # On parcourt chaque modèle pour calculer son score global
         for model_name, preds_df in self.oos_predictions.items():
             y_p = preds_df[self.config.macro_var_name]
             y_t = self.oos_true[self.config.macro_var_name]
-            
-            # On enlève les dates vides pour ne pas fausser le calcul
             mask = y_p.notna() & y_t.notna()
-
             if mask.any():
-                # On calcule l'erreur moyenne (RMSE) -> remplit le graph 1
-                rmse = np.sqrt(mean_squared_error(y_t[mask], y_p[mask]))
-                rmse_results[model_name] = rmse
-                
-                # On calcule la précision du signe -> remplit le graph 2
-                correct_sign = np.sign(y_t[mask]) == np.sign(y_p[mask])
-                accuracy_results[model_name] = correct_sign.mean()
+                rmse_results[model_name] = np.sqrt(mean_squared_error(y_t[mask], y_p[mask]))
+                accuracy_results[model_name] = (np.sign(y_t[mask]) == np.sign(y_p[mask])).mean()
 
-        # On transforme ces chiffres en jolis tableaux (DataFrames)
         rmse_df = pd.DataFrame.from_dict(rmse_results, orient='index', columns=['RMSE'])
         accuracy_df = pd.DataFrame.from_dict(accuracy_results, orient='index', columns=['Accuracy'])
 
-        # --- ENVOI SUR S3 DANS LE BON DOSSIER ---
-        # --- 5. ENVOI FINAL SUR S3 (VERSION COMPLÈTE POUR LE DASHBOARD) ---
         base_s3 = self.config.outputs_path + "/ml_model/expanding/"
-        logger.info(f"Envoi des résultats finaux vers {base_s3}...")
-
-        # A. Les indispensables (Le HAUT du dashboard)
-        # On envoie sous deux noms pour être CERTAIN que le dashboard en trouve un
         self.dm.aws.s3.upload(src=rmse_df, key=base_s3 + "oos_rmse_table.parquet")
-        self.dm.aws.s3.upload(src=rmse_df, key=base_s3 + "oos_rmse_overtime.parquet")
         self.dm.aws.s3.upload(src=accuracy_df, key=base_s3 + "oos_sign_accuracy.parquet")
-
-        # B. Les prédictions et la réalité
         self.dm.aws.s3.upload(src=self.oos_predictions, key=base_s3 + "oos_predictions.pkl")
         self.dm.aws.s3.upload(src=self.oos_true, key=base_s3 + "oos_true.parquet")
-
-        # C. Les détails techniques (Le BAS du dashboard - Ne pas les oublier !)
         self.dm.aws.s3.upload(src=self.best_hyperparams_all_models_overtime, key=base_s3 + "best_hyperparams_all_models_overtime.pkl")
         self.dm.aws.s3.upload(src=self.best_params_all_models_overtime, key=base_s3 + "best_params_all_models_overtime.pkl")
-        self.dm.aws.s3.upload(src=self.best_score_all_models_overtime, key=base_s3 + "best_score_all_models_overtime.parquet")
-
-        # D. Les données sources
         self.dm.aws.s3.upload(src=self.data, key=base_s3 + "data.parquet")
 
-        logger.info("Pipeline terminé ! Toutes les données du Dashboard ont été écrasées avec tes résultats.")
+        logger.info("Pipeline Expanding terminé avec succès.")
     
 
     # -----------------------------

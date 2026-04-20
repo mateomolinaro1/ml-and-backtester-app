@@ -46,14 +46,17 @@
   "FEATURE_ENGINEERING": {
     "START_DATE": "1959-01-01",
     "END_DATE": "2024-11-01",
-    "LAGS": []
+    "LAGS": [1,5, 12, 22, 63, 126, 252]
   },
   "FORECASTING": {
+    "DATASOURCE" : "fred_md",
     "ESTIMATION_METHOD": "expanding",
-    "ROLLING_WINDOW_SIZE": 120,
-    "LOAD_OR_TRAIN_MODELS": "load",
+    "ROLLING_WINDOW_SIZE": 1260,
+    "LOAD_OR_TRAIN_MODELS": "load", 
+    "DATA_FREQUENCY" : "monthly",
+    "RETRAIN_STEP": 22,
     "FORECAST_HORIZON": 1,
-    "VALIDATION_WINDOW": 12,
+    "VALIDATION_WINDOW": 63,
     "MIN_NB_PERIODS_REQUIRED": 252,
     "WITH_PCA": true,
     "NB_PCA_COMPONENTS": 12,

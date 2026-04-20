@@ -85,100 +85,127 @@ class RollingWindowScheme(EstimationScheme):
         # -----------------------------
         start_idx = self.min_nb_periods_required + self.validation_window + self.forecast_horizon
 
+        # Déterminer le pas
+        data_freq = getattr(self.config, "data_frequency", "monthly").lower()
+        step_size = getattr(self.config, "retrain_step", 22) if data_freq == "daily" else 1
+
+        # Dictionnaire pour garder les modèles entraînés en mémoire
+        self.active_bundles = {}
+
+        # --- INITIALISATION AVANT LA BOUCLE ---
+        data_freq = getattr(self.config, "data_frequency", "monthly").lower()
+        step_size = getattr(self.config, "retrain_step", 22) if data_freq == "daily" else 1
+        
+        # Dictionnaire pour stocker les modèles et extracteurs PCA actifs
+        self.active_bundles = {} 
+
+        # -----------------------------
+        # WALK-FORWARD LOOP
+        # -----------------------------
+        start_idx = self.min_nb_periods_required + self.validation_window + self.forecast_horizon
+
         for t in range(start_idx, len(self.date_range) - self.forecast_horizon):
             date_t = self.date_range[t]
-            logger.info(f"Training models (Rolling) for date {date_t} ({t}/{len(self.date_range) - self.forecast_horizon - 1})")
-
             t0 = time.time()
 
-            # --- LOGIQUE ROLLING ---
-            train_data, val_data, val_end = self._get_train_validation_split(t)
-            X_train, y_train = self._split_xy(train_data)
-
-            for model_name, ModelClass in models.items():
+            # --- CONDITION DE RÉ-ENTRAÎNEMENT (STEP) ---
+            if (t - start_idx) % step_size == 0:
+                logger.info(f"### [REFIT] Training models at {date_t} (Step {t}) ###")
                 
-                # Apply PCA if needed
-                X_train_run = X_train
-                val_data_run = val_data
-                pca_extractor = None
-                
-                if model_name.endswith("_pca"):
-                    pca_extractor = PCAFactorExtractor(n_factors=self.config.nb_pca_components)
-                    X_train_run = pca_extractor.fit_transform(X_train)
-                    val_x = val_data.drop(columns=[self.config.macro_var_name])
-                    val_x_pca = pca_extractor.transform(val_x)
-                    val_data_run = pd.concat([val_x_pca, val_data[[self.config.macro_var_name]]], axis=1)
+                train_data, val_data, val_end = self._get_train_validation_split(t)
+                X_train, y_train = self._split_xy(train_data)
 
-                best_score = -np.inf
-                best_hyperparams = None
+                for model_name, ModelClass in models.items():
+                    # --- LOGIQUE PCA ---
+                    X_train_run = X_train
+                    val_data_run = val_data
+                    pca_extractor = None
+                    
+                    if model_name.endswith("_pca"):
+                        pca_extractor = PCAFactorExtractor(n_factors=self.config.nb_pca_components)
+                        X_train_run = pca_extractor.fit_transform(X_train)
+                        val_x = val_data.drop(columns=[self.config.macro_var_name])
+                        val_x_pca = pca_extractor.transform(val_x)
+                        val_data_run = pd.concat([val_x_pca, val_data[[self.config.macro_var_name]]], axis=1)
 
-                # -----------------------------
-                # HYPERPARAMETER SEARCH (SAFER VERSION)
-                # -----------------------------
-                for hp in hyperparams_all_combinations[model_name]:
-                    model_eval = ModelClass(**hp)
-                    model_eval.fit(X_train_run, y_train)
+                    # --- HYPERPARAMETER SEARCH ---
+                    best_score = -np.inf
+                    best_hyperparams = None
 
-                    ICs = []
-                    for d in val_data_run.index.unique():
-                        val_d = val_data_run[val_data_run.index == d]
-                        X_v, y_v = self._split_xy(val_d)
-                        if len(y_v) > 0:
-                            y_hat_v = model_eval.predict(X_v)
-                            rmse = np.sqrt(mean_squared_error(y_v, y_hat_v))
-                            ICs.append(rmse)
+                    for hp in hyperparams_all_combinations[model_name]:
+                        model_eval = ModelClass(**hp)
+                        model_eval.fit(X_train_run, y_train)
 
-                    current_score = np.mean(ICs) if ICs else -np.inf
-                    if current_score > best_score:
-                        best_score = current_score
-                        best_hyperparams = hp
+                        ICs = []
+                        for d in val_data_run.index.unique():
+                            val_d = val_data_run[val_data_run.index == d]
+                            X_v, y_v = self._split_xy(val_d)
+                            if len(y_v) > 0:
+                                y_hat_v = model_eval.predict(X_v)
+                                rmse = np.sqrt(mean_squared_error(y_v, y_hat_v))
+                                ICs.append(rmse)
 
-                # -----------------------------
-                # STORE VALIDATION RESULTS
-                # -----------------------------
-                self.best_score_all_models_overtime.loc[date_t, model_name] = best_score
-                if best_hyperparams is not None:
+                        current_score = np.mean(ICs) if ICs else -np.inf
+                        if current_score > best_score:
+                            best_score = current_score
+                            best_hyperparams = hp
+
+                    # --- FINAL TRAIN DU MODÈLE ---
+                    model_final = ModelClass(**best_hyperparams)
+                    model_final.fit(X_train_run, y_train)
+
+                    # --- STOCKAGE DANS LE BUNDLE ---
+                    self.active_bundles[model_name] = {
+                        "model": model_final,
+                        "pca": pca_extractor,
+                        "X_train_cols": X_train_run.columns
+                    }
+
+                    # --- LOGS & SAUVEGARDE S3 ---
+                    self.best_score_all_models_overtime.loc[date_t, model_name] = best_score
                     for k, v in best_hyperparams.items():
                         self.best_hyperparams_all_models_overtime[model_name].loc[date_t, k] = v
 
-                # -----------------------------
-                # FINAL TRAIN
-                # -----------------------------
-                model_final = ModelClass(**best_hyperparams)
-                model_final.fit(X_train_run, y_train)
+                    model_filename = f"rolling_{model_name}_{date_t.strftime('%Y-%m-%d')}.pkl"
+                    local_path = os.path.join(tmp_dir, model_filename)
+                    joblib.dump(model_final, local_path)
+                    self.dm.aws.s3.upload(local_path, key=f"models/rolling/{model_name}/{model_filename}")
+                    if os.path.exists(local_path): os.remove(local_path)
 
-                model_filename = f"rolling_{model_name}_{date_t.strftime('%Y-%m-%d')}.pkl"
-                local_path = os.path.join(tmp_dir, model_filename)
-                joblib.dump(model_final, local_path)
-                s3_key = f"models/rolling/{model_name}/{model_filename}"
-                self.dm.aws.s3.upload(local_path, key=s3_key)
-                if os.path.exists(local_path): os.remove(local_path)
+                    logger.info(f"{model_name} refitted in {round((time.time() - t0) / 60, 3)} min")
 
-                # Prediction Out-of-Sample
-                test_df = self.data[self.data.index == date_t]
-                X_test, y_test = self._split_xy(test_df)
-                if pca_extractor: X_test = pca_extractor.transform(X_test)
+            # --- PRÉDICTION OUT-OF-SAMPLE (SYSTÉMATIQUE CHAQUE T) ---
+            test_df = self.data[self.data.index == date_t]
+            X_test_raw, y_test = self._split_xy(test_df)
 
-                y_hat = model_final.predict(X_test)
+            for model_name in models.keys():
+                if model_name in self.active_bundles:
+                    bundle = self.active_bundles[model_name]
+                    model_obj = bundle["model"]
+                    pca_obj = bundle["pca"]
 
-                self.oos_predictions[model_name].loc[date_t, self.config.macro_var_name] = float(np.ravel(y_hat)[0])
-                self.oos_true.loc[date_t, self.config.macro_var_name] = float(np.ravel(y_test.values)[0])
+                    # Application de la PCA si nécessaire (celle du dernier refit)
+                    X_test_run = X_test_raw
+                    if pca_obj:
+                        X_test_run = pca_obj.transform(X_test_raw)
 
-                # -----------------------------
-                # STORE COEFFICIENTS
-                # -----------------------------
-                if model_name in linear_models:
-                    self.best_params_all_models_overtime[model_name].loc[date_t, "intercept"] = (
-                        model_final.model.intercept_ if hasattr(model_final.model, "intercept_") else np.nan
-                    )
-                    self.best_params_all_models_overtime[model_name].loc[date_t, X_train_run.columns] = model_final.model.coef_
+                    # Prédiction
+                    y_hat = model_obj.predict(X_test_run)
 
-                logger.info(f"{model_name} done in {round((time.time() - t0) / 60, 3)} min")
+                    # Stockage OOS
+                    self.oos_predictions[model_name].loc[date_t, self.config.macro_var_name] = float(np.ravel(y_hat)[0])
+                    self.oos_true.loc[date_t, self.config.macro_var_name] = float(np.ravel(y_test.values)[0])
 
-        # -----------------------------
-        # FINAL ANALYTICS & S3 UPLOAD
-        # -----------------------------
+                    # Store Coefficients (si modèle linéaire)
+                    if model_name in linear_models:
+                        self.best_params_all_models_overtime[model_name].loc[date_t, "intercept"] = (
+                            model_obj.model.intercept_ if hasattr(model_obj.model, "intercept_") else np.nan
+                        )
+                        self.best_params_all_models_overtime[model_name].loc[date_t, bundle["X_train_cols"]] = model_obj.model.coef_
+        
+        # --- SAUVEGARDE FINALE SUR S3 ---
         self._save_final_results_to_s3()
+        logger.info("Rolling Window Estimation Scheme completed successfully.")
 
     def _get_train_validation_split(self, t: int):
         """
