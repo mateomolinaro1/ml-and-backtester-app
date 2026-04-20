@@ -94,7 +94,7 @@ class RollingWindowScheme(EstimationScheme):
 
         # --- INITIALISATION AVANT LA BOUCLE ---
         data_freq = getattr(self.config, "data_frequency", "monthly").lower()
-        step_size = getattr(self.config, "retrain_step", 22) if data_freq == "daily" else 1
+        step_size = 22 if data_freq == "daily" else 1
         
         # Dictionnaire pour stocker les modèles et extracteurs PCA actifs
         self.active_bundles = {} 
