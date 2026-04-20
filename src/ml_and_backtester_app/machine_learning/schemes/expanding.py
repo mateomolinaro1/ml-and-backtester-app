@@ -33,9 +33,7 @@ class ExpandingWindowScheme(EstimationScheme):
         elif self.config.load_or_train_models != "train":
             raise ValueError("config.load_or_train_models must be either 'load' or 'train'")
 
-        # ---------------------------------------------------------
-        # CONFIGURATION HARDCODÉE SELON LA FRÉQUENCE
-        # ---------------------------------------------------------
+        #Configuration
         data_freq = getattr(self.config, "data_frequency", "monthly").lower()
         
         if data_freq == "daily":
