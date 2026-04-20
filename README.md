@@ -51,6 +51,7 @@ This version focuses on **production and MLOps**:
 The goal is to move from a research project to a **deployable ML application with monitoring and interface**.
 
 ---
+Before running the project locally, follow the setup steps below to configure your environment properly.
 
 ## 0. Folder location
 Go to the folder where you want to clone the project
