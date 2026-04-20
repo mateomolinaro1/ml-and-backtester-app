@@ -38,3 +38,5 @@ outputs/results/*
 outputs/figures/*
 !outputs/figures/.gitkeep
 
+mlflow.db
+mlruns/
