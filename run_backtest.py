@@ -1,8 +1,5 @@
 import json
 import os
-import sys
-import pandas as pd
-import numpy as np
 from ml_and_backtester_app.backtester import data, signal_utilities, strategies, portfolio, backtest_pandas, analysis
 from ml_and_backtester_app.utils.config import Config
 

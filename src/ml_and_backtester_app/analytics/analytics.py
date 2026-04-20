@@ -2,9 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib
 from ml_and_backtester_app.dynamic_allocation.dynamic_allocation import DynamicAllocation
-matplotlib.use("Agg")  # non-GUI backend
 import matplotlib.pyplot as plt
-plt.style.use("seaborn-v0_8-whitegrid")
 import logging
 from ml_and_backtester_app.utils.config import Config
 from ml_and_backtester_app.data.data_manager import DataManager
@@ -70,7 +68,8 @@ class AnalyticsFMP:
 
     def _get_bayesian_betas_distribution(self) -> None:
         betas = self.fmp.bayesian_betas.stack().dropna()
-        if betas.empty: return
+        if betas.empty:
+            return
 
         start_date, end_date = betas.index[0][0], betas.index[-1][0]
         lo, hi = betas.quantile([0.01, 0.99])
@@ -87,11 +86,13 @@ class AnalyticsFMP:
 
     def _get_bayesian_betas_overtime(self) -> None:
         betas = self.fmp.bayesian_betas
-        if betas.empty: return
+        if betas.empty: 
+            return
         
         avg, p10, p90 = betas.mean(axis=1), betas.quantile(0.10, axis=1), betas.quantile(0.90, axis=1)
         avg_non_na = avg.dropna()
-        if avg_non_na.empty: return
+        if avg_non_na.empty:
+            return
         start_date, end_date = avg_non_na.index[[0, -1]]
 
         fig, ax = plt.subplots(figsize=(12, 6))
@@ -110,7 +111,8 @@ class AnalyticsFMP:
     def _get_table_comparison_between_bayesian_and_non_bayesian_betas(self) -> None:
         bayesian = self.fmp.bayesian_betas.stack().dropna()
         non_bayesian = self.fmp.betas_macro.stack().dropna()
-        if bayesian.empty or non_bayesian.empty: return
+        if bayesian.empty or non_bayesian.empty:
+            return
 
         summary_df = pd.DataFrame({
             "Bayesian Betas": [bayesian.mean(), bayesian.median(), bayesian.std(), bayesian.min(), bayesian.max()],
@@ -124,7 +126,8 @@ class AnalyticsFMP:
 
     def _get_summary_statistics_rsquared(self) -> None:
         rsquared = self.fmp.adjusted_rsquared.stack().dropna()
-        if rsquared.empty: return
+        if rsquared.empty: 
+            return
 
         summary_df = pd.DataFrame({
             "Adjusted R-squared": [rsquared.mean(), rsquared.median(), rsquared.std(), rsquared.min(), rsquared.max()]
@@ -137,9 +140,11 @@ class AnalyticsFMP:
 
     def _get_cross_sectional_statistics_rsquared(self) -> None:
         rsq = self.fmp.adjusted_rsquared
-        if rsq.empty: return
+        if rsq.empty:
+            return
         avg, p10, p90 = rsq.mean(axis=1), rsq.quantile(0.10, axis=1), rsq.quantile(0.90, axis=1)
-        if avg.dropna().empty: return
+        if avg.dropna().empty: 
+            return
 
         fig, ax = plt.subplots(figsize=(12, 6))
         ax.plot(avg.index, avg, label="Mean adjusted $R^2$", linewidth=2)
@@ -153,9 +158,11 @@ class AnalyticsFMP:
 
     def _plot_significant_proportion_bayesian_betas_overtime(self, alpha: float = 0.05) -> None:
         p_values = self.fmp.newey_west_pvalue
-        if p_values.empty: return
+        if p_values.empty:
+            return
         proportion = (p_values < alpha).sum(axis=1) / p_values.notnull().sum(axis=1).replace(0, np.nan)
-        if proportion.dropna().empty: return
+        if proportion.dropna().empty:
+            return
 
         fig, ax = plt.subplots(figsize=(12, 6))
         ax.plot(proportion.index, proportion, linewidth=2, color='darkgreen')
@@ -168,7 +175,8 @@ class AnalyticsFMP:
 
     def _plot_equity_curves_fmp(self) -> None:
         returns = pd.concat([self.fmp.positive_betas_fmp_returns, self.fmp.negative_betas_fmp_returns, self.fmp.benchmark_returns], axis=1).dropna(how="all")
-        if returns.empty: return
+        if returns.empty:
+            return
         equity = returns.cumsum()
 
         fig, ax = plt.subplots(figsize=(12, 6))
@@ -204,10 +212,13 @@ class AnalyticsFMP:
         plt.close(fig)
 
     def _compute_performance_metrics(self, returns, portfolio_type="long_only", freq=12) -> pd.DataFrame:
-        if isinstance(returns, pd.DataFrame): returns = returns.squeeze()
-        if portfolio_type == "short_only": returns = -returns
+        if isinstance(returns, pd.DataFrame):
+            returns = returns.squeeze()
+        if portfolio_type == "short_only":
+            returns = -returns
         returns = returns.dropna()
-        if returns.empty: return pd.DataFrame()
+        if returns.empty: 
+            return pd.DataFrame()
 
         ann_return = (1 + returns).prod() ** (freq / len(returns)) - 1
         ann_vol = returns.std() * np.sqrt(freq)
@@ -301,7 +312,8 @@ class AnalyticsForecasting:
 
     def _export_features_table(self) -> None:
         df = self.objs["x"].copy()
-        if df.empty: return
+        if df.empty:
+            return
 
         df = df.iloc[:10, :10].round(4)
         fig = self._render_styled_table(df, "Features Table (Sample)")
@@ -312,7 +324,8 @@ class AnalyticsForecasting:
 
     def _plot_best_score_overtime(self, y_lim: float = 0.015) -> None:
         df = self.objs["best_score_all_models_overtime"]
-        if df.empty: return
+        if df.empty:
+            return
 
         fig, ax = plt.subplots(figsize=(10, 6))
         ax.plot(df)
@@ -349,7 +362,8 @@ class AnalyticsForecasting:
             ax.set_title(mdl, fontsize=10)
             ax.grid(True, alpha=0.2)
 
-        for ax in axes[len(mdl_names):]: ax.axis("off")
+        for ax in axes[len(mdl_names):]: 
+            ax.axis("off")
         fig.tight_layout()
 
         s3Utils.save_plot_to_s3(dm=self.dm, path_name=f"{self.fig_path}/best_hyperparams_all_models_overtime.png", fig=fig)
@@ -381,7 +395,8 @@ class AnalyticsForecasting:
     def _export_selected_features_proportion(self, max_rows: int = 25) -> None:
         params = self.objs["best_params_all_models_overtime"]
         params = {k: v for k, v in params.items() if k in self.linear_models_without_pca}
-        if not params: return
+        if not params:
+            return
 
         features = next(iter(params.values())).columns
         df = pd.DataFrame(index=features, columns=list(params.keys()), dtype=float)
@@ -401,7 +416,8 @@ class AnalyticsForecasting:
     def _export_mean_parameters(self, max_rows: int = 25) -> None:
         params = self.objs["best_params_all_models_overtime"]
         params = {k: v for k, v in params.items() if k in self.linear_models_without_pca}
-        if not params: return
+        if not params:
+            return
 
         features = next(iter(params.values())).columns
         df = pd.DataFrame(index=features, columns=list(params.keys()), dtype=float)
@@ -444,7 +460,8 @@ class AnalyticsForecasting:
         self.rmse_df = rmse_df
 
     def _export_oos_rmse_table(self) -> None:
-        if self.rmse_df is None or self.rmse_df.empty: return
+        if self.rmse_df is None or self.rmse_df.empty:
+            return
 
         df = self.rmse_df.mean().sort_values().to_frame("mean_rmse")
         df.insert(0, "rank", np.arange(1, len(df) + 1))
@@ -465,7 +482,8 @@ class AnalyticsForecasting:
             y_pred = y_pred_df.iloc[:, 0]
             df = pd.concat([y_true, y_pred], axis=1, join="inner").dropna()
             df.columns = ["y_true", "y_pred"]
-            if len(df) == 0: continue
+            if len(df) == 0:
+                continue
             
             correct = (np.sign(df["y_true"]) == np.sign(df["y_pred"]))
             non_zero = (df["y_true"] != 0) & (df["y_pred"] != 0)
@@ -574,13 +592,15 @@ class AnalyticsDynamicAllocation:
         return {col: (1 + returns_df[[col]]).cumprod() - 1 for col in returns_df.columns}
 
     def _plot_dynamic_allocation_cum_returns(self, cum_rets: dict) -> None:
-        if not cum_rets: return
+        if not cum_rets:
+            return
 
         fig, ax = plt.subplots(figsize=(12, 6))
         dashed_keys = {"Bench LO EW stocks", "Bench EW FMP"}
 
         for name, df in cum_rets.items():
-            if df.empty: continue
+            if df.empty: 
+                continue
             series = df.iloc[:, 0]
             if name in dashed_keys:
                 ax.plot(series.index, series.values, linestyle="--", color="black", label=name, alpha=0.7)
@@ -617,7 +637,8 @@ class AnalyticsDynamicAllocation:
         return pd.Series({"Ann. Return": ann_ret, "Ann. Vol": ann_vol, "Sharpe": sharpe, "Max DD": max_dd})
 
     def _export_performance_table(self, perf_table: pd.DataFrame) -> None:
-        if perf_table.empty: return
+        if perf_table.empty:
+            return
 
         df_fmt = perf_table.copy()
         df_fmt[["Ann. Return", "Ann. Vol", "Max DD"]] *= 100

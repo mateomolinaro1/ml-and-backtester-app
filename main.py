@@ -10,7 +10,8 @@ from ml_and_backtester_app.analytics.analytics import AnalyticsFMP, AnalyticsFor
     AnalyticsDynamicAllocation
 import sys
 import logging
-import psutil, os
+import psutil
+import os
 load_dotenv()
 logger = logging.getLogger(__name__)
 logging.basicConfig(

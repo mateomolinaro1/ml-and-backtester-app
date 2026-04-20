@@ -158,7 +158,7 @@ class DynamicAllocation:
             weights=bench_ptf.rebalanced_weights,
             turnover=bench_ptf.turnover,
             transaction_costs=self.config.dynamic_allocation_tc,
-            strategy_name=f"BENCHMARK_EW_FMP"
+            strategy_name="BENCHMARK_EW_FMP"
         )
         bench_backtester.run_backtest()
         self.benchmark_ew_fmp_net_returns = bench_backtester.cropped_portfolio_net_returns
