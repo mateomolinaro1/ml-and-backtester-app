@@ -35,6 +35,7 @@ class DataManager:
         self.returns_data: pd.DataFrame | None = None
         self.code_transfo: Dict[str, int | float] | None = None
         self.aws: AWS | None = None
+        self.epu_data: pd.DataFrame | None = None  # Optional, only if EPU is loaded
 
         self.load()
 
@@ -77,7 +78,7 @@ class DataManager:
         if source == "monthly_epu":
             # Remplace par le bon attribut de ta config ou une clé JSON
             data_to_load["epu"] = self.aws.s3.load(key="data/monthly_epu_index.parquet")
-        elif source == "categorical_epu":
+        elif source == "cat_epu":
             data_to_load["epu"] = self.aws.s3.load(key="data/US_monthly_categorical_epu_indices.parquet")
         elif source == "daily_epu":
             # Ici on utilise ton attribut daily_macro_path si c'est là que tu stockes le daily EPU
