@@ -23,11 +23,13 @@ def run():
     start_date = bt_params.get("start_date", "2010-01-01")
     rebal = bt_params.get("nb_period_to_exclude", 22)
     costs = bt_params.get("transaction_costs", 10)
-    
-    # C'EST ICI QUE LA DIRECTION ARRIVE :
-    # Si ascending=True -> On achète les plus PETITES valeurs (ex: P/E)
-    # Si ascending=False -> On achète les plus GRANDES valeurs (ex: Momentum, ROE)
     is_ascending = bt_params.get("ascending", False) 
+
+    # --- LE MINIMUM POUR LA FRÉQUENCE ---
+    if chosen_ratio == "Momentum":
+        freq, ann, actual_rebal = "d", 252, rebal
+    else:
+        freq, ann, actual_rebal = "m", 12, 1 # 1 mois si on est en fondamental
 
     print(f"Starting Backtest: {chosen_ratio} | Direction: {'Buy Low' if is_ascending else 'Buy High'}")
 
@@ -106,7 +108,7 @@ def run():
     ptf = portfolio.EqualWeightingScheme(
         returns=returns_cut,
         signals=strategy.signals,
-        rebal_periods=rebal,
+        rebal_periods=actual_rebal,
         portfolio_type="long_only"
     )
     ptf.compute_weights()
@@ -115,7 +117,7 @@ def run():
     ptf_bench = portfolio.EqualWeightingScheme(
         returns=returns_cut,
         signals=bench.signals,
-        rebal_periods=rebal,
+        rebal_periods=actual_rebal,
         portfolio_type="long_only"
     )
     ptf_bench.compute_weights()
@@ -133,7 +135,7 @@ def run():
 
     backtester_bench = backtest_pandas.Backtest(
         returns=returns_cut,
-        weights=ptf_bench.rebalanced_weights.shift(1),
+        weights=ptf_bench.rebalanced_weights,
         turnover=ptf_bench.turnover,
         transaction_costs=costs,
         strategy_name="BUY_AND_HOLD"
@@ -144,10 +146,10 @@ def run():
     analyzer = analysis.PerformanceAnalyser(
         portfolio_returns=backtester.cropped_portfolio_net_returns,
         bench_returns=backtester_bench.portfolio_net_returns.loc[backtester.start_date:, :],
-        freq="d",
+        freq=freq,
         percentiles=str((p_low, p_high)),
         industries="Cross_Industries",
-        rebal_freq=f"{rebal} d"
+        rebal_freq=f"{actual_rebal} {freq}"
     )
     analyzer.compute_metrics()
 

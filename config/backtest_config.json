@@ -1,10 +1,10 @@
 {
-  "ratio_name": "capei",
+  "ratio_name": "be",
   "ascending": false,
   "start_date": "2010-01-01",
   "transaction_costs": 10,
   "nb_period_to_exclude": 22,
-  "strategy_name": "STRAT_CAPEI",
+  "strategy_name": "STRAT_BE",
   "percentiles": [
     10,
     90

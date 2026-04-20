@@ -251,6 +251,18 @@ def _backtest_tab(paths: S3PathManager) -> html.Div:
                             ]),
                         ], className="mb-3"),
 
+                        html.Label("Percentiles (Low / High)", className="small mb-1"),
+                        dbc.Row([
+                            dbc.Col([
+                                dbc.Input(id="bt-p-low", type="number", value=10, min=0, max=49, size="sm"),
+                                html.FormText("Bottom %", className="smaller text-muted"),
+                            ]),
+                            dbc.Col([
+                                dbc.Input(id="bt-p-high", type="number", value=90, min=51, max=100, size="sm"),
+                                html.FormText("Top %", className="smaller text-muted"),
+                            ]),
+                        ], className="mb-3"),
+
                         dbc.Button("Run Backtest", id="btn-run-backtest", color="primary", className="w-100 mt-2 shadow-sm"),
                     ])
                 ], className="border-0 shadow-sm"),
@@ -384,9 +396,11 @@ def register(app: dash.Dash, paths: S3PathManager) -> None:
         State("bt-date-picker", "date"),
         State("bt-costs", "value"),
         State("bt-rebal", "value"),
+        State("bt-p-low", "value"),
+        State("bt-p-high", "value"),
         prevent_initial_call=True
     )
-    def on_run_backtest(n, ratio, direction, start_date, costs, rebal):
+    def on_run_backtest(n, ratio, direction, start_date, costs, rebal, p_low, p_high):
         from ml_and_backtester_app.dashboard.pipeline_runner import start
         
         # On construit le dictionnaire de config dynamiquement
@@ -398,7 +412,7 @@ def register(app: dash.Dash, paths: S3PathManager) -> None:
             "transaction_costs": costs,
             "nb_period_to_exclude": rebal,
             "strategy_name": f"STRAT_{ratio.upper()}",
-            "percentiles": [10, 90]
+            "percentiles": [p_low, p_high]
         }
         
         # On envoie ça au Worker
