@@ -20,15 +20,18 @@ We reuse this project as a starting point and extend it in an MLOps perspective.
 
 ## What the project does
 
-The goal of the project is to build and evaluate an **investment strategy based on macroeconomic signals**.
+The goal of the project is twofolds: 1) building a machine learning based quantitative (dynamic allocation) strategy
+using macroeconomic data (see the report in the original repo "Dynamic Allocation using macro FMPs") and 2) a backtester
+engine to evaluate simple univariate ranking strategies based on market and fundamental data from WRDS (CRSP).
 
 Concretely, the application:
 - collects macroeconomic and financial data
-- builds features to capture market dynamics
-- trains machine learning models to predict asset behavior
+- builds macro factor mimicking portfolios (FMP)
+- trains machine learning models to predict 1-month ahead the selected macro variable
 - generates **dynamic portfolio allocations**
 - evaluates performance through a **backtesting framework**
-
+- Offers an additional backtesting engine sheet (unrelated to (1)) that allows to backtest simple univariate
+ranking strategies
 ---
 
 ### Initial state
@@ -41,10 +44,11 @@ The original project already included:
 
 This version focuses on **production and MLOps**:
 
+- live data pipeline for macro data (cannot do it for market data as it requires the IBKR API!)
 - reproducible environment (uv)
 - automated tests (pytest)
 - CI pipeline (GitHub Actions)
-- Docker containerization + automated delivery (DockerHub)
+- Docker containerization + automated delivery (DockerHub) + automatic app deployment (Render)
 - experiment tracking with **MLflow**
 - web interface/dashboard deployed via **Render**
 
@@ -106,3 +110,10 @@ Windows (PowerShell)
 ```env
 uv install
 ```
+
+## 7. Run the dashboard
+There is an online version available at https://ml-and-backtester-app-latest.onrender.com/ or run it locally with:
+```env
+uv run --directory src/ml_and_backtester_app/dashboard python app.py
+```
+and access it at http://localhost:8050/ in your browser.
