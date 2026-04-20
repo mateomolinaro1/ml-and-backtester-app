@@ -249,6 +249,10 @@ def _backtest_tab(paths: S3PathManager) -> html.Div:
                                 html.Label("Rebal. (days)", className="small"),
                                 dbc.Input(id="bt-rebal", type="number", value=22, size="sm"),
                             ]),
+                            dbc.Col([
+                                html.Label("Skip (days)", className="small"),
+                                dbc.Input(id="bt-mom-skip", type="number", value=22, size="sm"), # NOUVEAU
+                            ], width=4),
                         ], className="mb-3"),
 
                         # ... à l'intérieur de dbc.Row pour les percentiles ...
@@ -394,11 +398,12 @@ def register(app: dash.Dash, paths: S3PathManager) -> None:
         State("bt-date-picker", "date"),
         State("bt-costs", "value"),
         State("bt-rebal", "value"),
+        State("bt-mom-skip", "value"),
         State("bt-p-low", "value"),
         State("bt-p-high", "value"),
         prevent_initial_call=True
     )
-    def on_run_backtest(n, ratio, direction, start_date, costs, rebal, p_low, p_high):
+    def on_run_backtest(n, ratio, direction, start_date, costs, rebal,mom_skip, p_low, p_high):
         from ml_and_backtester_app.dashboard.pipeline_runner import start
         
         # On construit le dictionnaire de config dynamiquement
@@ -409,6 +414,7 @@ def register(app: dash.Dash, paths: S3PathManager) -> None:
             "start_date": start_date,
             "transaction_costs": costs,
             "nb_period_to_exclude": rebal,
+            "mom_skip": mom_skip,
             "strategy_name": f"STRAT_{ratio.upper()}",
             "percentiles": [p_low, p_high]
         }

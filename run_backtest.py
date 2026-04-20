@@ -24,6 +24,7 @@ def run():
     rebal = bt_params.get("nb_period_to_exclude", 22)
     costs = bt_params.get("transaction_costs", 10)
     is_ascending = bt_params.get("ascending", False) 
+    mom_skip = bt_params.get("mom_skip", 22)
 
     # --- LE MINIMUM POUR LA FRÉQUENCE ---
     if chosen_ratio == "Momentum":
@@ -72,7 +73,7 @@ def run():
     if chosen_ratio == "Momentum":
         base_func = signal_utilities.Momentum.rolling_momentum
         func = lambda df, **kwargs: base_func(df, **kwargs) * (-1 if is_ascending else 1)
-        inputs = {"df": dm.cleaned_data, "nb_period": 252, "nb_period_to_exclude": rebal}
+        inputs = {"df": dm.cleaned_data, "nb_period": 252, "nb_period_to_exclude": mom_skip}
     else:
         print(f"Pivoting factor: {chosen_ratio}...")
         signal_wide = raw_df.pivot(index="date", columns="permno", values=chosen_ratio)
