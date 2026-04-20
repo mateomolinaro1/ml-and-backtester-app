@@ -12,7 +12,6 @@ import os
 import boto3
 import pandas as pd
 from botocore.config import Config as BotocoreConfig
-from botocore.exceptions import ClientError
 
 logger = logging.getLogger(__name__)
 

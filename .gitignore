@@ -21,6 +21,11 @@ wheels/
 # Others
 sandbox.txt
 
+# MLflow local tracking
+mlruns/
+mlflow.db
+tmp/
+
 docs/*
 !docs/.gitkeep
 
@@ -33,3 +38,5 @@ outputs/results/*
 outputs/figures/*
 !outputs/figures/.gitkeep
 
+mlflow.db
+mlruns/
