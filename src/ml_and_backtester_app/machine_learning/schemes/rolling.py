@@ -3,7 +3,6 @@ import time
 import joblib
 import numpy as np
 import pandas as pd
-from joblib import Parallel, delayed
 from sklearn.metrics import mean_squared_error
 from typing import Dict, Type
 from .base import EstimationScheme
@@ -152,12 +151,14 @@ class RollingWindowScheme(EstimationScheme):
                 joblib.dump(model_final, local_path)
                 s3_key = f"models/rolling/{model_name}/{model_filename}"
                 self.dm.aws.s3.upload(local_path, key=s3_key)
-                if os.path.exists(local_path): os.remove(local_path)
+                if os.path.exists(local_path):
+                    os.remove(local_path)
 
                 # Prediction Out-of-Sample
                 test_df = self.data[self.data.index == date_t]
                 X_test, y_test = self._split_xy(test_df)
-                if pca_extractor: X_test = pca_extractor.transform(X_test)
+                if pca_extractor: 
+                    X_test = pca_extractor.transform(X_test)
 
                 y_hat = model_final.predict(X_test)
 
