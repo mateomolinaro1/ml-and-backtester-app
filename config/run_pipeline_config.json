@@ -49,6 +49,7 @@
     "LAGS": [1,5, 12, 22, 63, 126, 252]
   },
   "FORECASTING": {
+    "DATASOURCE" : "fred_md",
     "ESTIMATION_METHOD": "expanding",
     "ROLLING_WINDOW_SIZE": 1260,
     "LOAD_OR_TRAIN_MODELS": "load",
