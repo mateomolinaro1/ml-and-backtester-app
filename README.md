@@ -117,3 +117,35 @@ There is an online version available at https://ml-and-backtester-app-latest.onr
 uv run --directory src/ml_and_backtester_app/dashboard python app.py
 ```
 and access it at http://localhost:8050/ in your browser.
+
+## 8. (Optional) MLflow — Experiment tracking
+
+MLflow tracks all training runs, metrics, hyperparameters and models. It stores everything in a local SQLite database (`mlflow.db`) at the root of the project. This file is created automatically on the first training run and is ignored by git (each team member has their own local database).
+
+### Populate the database
+
+If you haven't run a training yet, you can quickly populate MLflow with test data:
+```env
+uv run python tests/test_mlflow.py
+````
+Or run the full training pipeline (requires `.env` configured):
+```env
+uv run python main.py
+````
+### Launch the MLflow UI
+Linux / macOS:
+```env
+uv run mlflow ui --backend-store-uri sqlite:///mlflow.db
+````
+Windows (PowerShell):
+```env
+uv run mlflow ui --backend-store-uri sqlite:///mlflow.db --workers 1
+````
+Then open http://localhost:5000 in your browser.
+
+### Change the port (optional)
+
+If port 5000 is already in use:
+```env
+uv run mlflow ui --backend-store-uri sqlite:///mlflow.db --port 5001
+```
