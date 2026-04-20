@@ -251,17 +251,15 @@ def _backtest_tab(paths: S3PathManager) -> html.Div:
                             ]),
                         ], className="mb-3"),
 
-                        html.Label("Percentiles (Low / High)", className="small mb-1"),
-                        dbc.Row([
-                            dbc.Col([
-                                dbc.Input(id="bt-p-low", type="number", value=10, min=0, max=49, size="sm"),
-                                html.FormText("Bottom %", className="smaller text-muted"),
-                            ]),
-                            dbc.Col([
-                                dbc.Input(id="bt-p-high", type="number", value=90, min=51, max=100, size="sm"),
-                                html.FormText("Top %", className="smaller text-muted"),
-                            ]),
-                        ], className="mb-3"),
+                        # ... à l'intérieur de dbc.Row pour les percentiles ...
+                        dbc.Col([
+                            dbc.Input(id="bt-p-low", type="number", value=10, min=0, max=49, size="sm"),
+                            dbc.FormText("Bottom %", className="smaller text-muted"), # <--- C'était html.FormText ici
+                        ]),
+                        dbc.Col([
+                            dbc.Input(id="bt-p-high", type="number", value=90, min=51, max=100, size="sm"),
+                            dbc.FormText("Top %", className="smaller text-muted"),    # <--- Et ici aussi
+                        ]),
 
                         dbc.Button("Run Backtest", id="btn-run-backtest", color="primary", className="w-100 mt-2 shadow-sm"),
                     ])

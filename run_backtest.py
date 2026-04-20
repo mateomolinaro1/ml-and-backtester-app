@@ -135,7 +135,7 @@ def run():
 
     backtester_bench = backtest_pandas.Backtest(
         returns=returns_cut,
-        weights=ptf_bench.rebalanced_weights,
+        weights=ptf_bench.rebalanced_weights.shift(1),
         turnover=ptf_bench.turnover,
         transaction_costs=costs,
         strategy_name="BUY_AND_HOLD"
