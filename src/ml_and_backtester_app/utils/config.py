@@ -68,7 +68,9 @@ class Config:
         self.lags: List[int]|list|None = None
 
         # Forecasting
+        self.datasource: str|None = None
         self.load_or_train_models: str | None = None  # "load" or "train"
+        self.data_frequency: str|None = None
         self.estimation_method: str | None = None
         self.rolling_window_size: int | None = None
         self.forecast_horizon: int|None = None
