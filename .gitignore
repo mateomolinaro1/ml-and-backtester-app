@@ -21,6 +21,11 @@ wheels/
 # Others
 sandbox.txt
 
+# MLflow local tracking
+mlruns/
+mlflow.db
+tmp/
+
 docs/*
 !docs/.gitkeep
 
