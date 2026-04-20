@@ -1,3 +1,57 @@
+# ML and Backtester App (MLOps version)
+
+## Team
+- Molinaro Mateo  
+- Chaudron Lucien  
+- Aluch Yasmine  
+- Li Romain
+- Saimane Nawal  
+
+---
+
+## Project overview
+
+This project is based on the following initial work:  
+https://github.com/mateomolinaro1/dynamic-allocation-macro-fmp  
+
+We reuse this project as a starting point and extend it in an MLOps perspective.
+
+---
+
+## What the project does
+
+The goal of the project is to build and evaluate an **investment strategy based on macroeconomic signals**.
+
+Concretely, the application:
+- collects macroeconomic and financial data
+- builds features to capture market dynamics
+- trains machine learning models to predict asset behavior
+- generates **dynamic portfolio allocations**
+- evaluates performance through a **backtesting framework**
+
+---
+
+### Initial state
+The original project already included:
+- a data pipeline (macro + market data)
+- a dynamic allocation strategy
+- a backtesting framework
+
+### What we added
+
+This version focuses on **production and MLOps**:
+
+- reproducible environment (uv)
+- automated tests (pytest)
+- CI pipeline (GitHub Actions)
+- Docker containerization + automated delivery (DockerHub)
+- experiment tracking with **MLflow**
+- web interface/dashboard deployed via **Render**
+
+The goal is to move from a research project to a **deployable ML application with monitoring and interface**.
+
+---
+
 ## 0. Folder location
 Go to the folder where you want to clone the project
 ```env
